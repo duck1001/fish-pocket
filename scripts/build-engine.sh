@@ -20,6 +20,19 @@ cp -R "$src/skills" "$out/skills"
 
 (cd "$out" && npm install --omit=dev --os=ios --cpu=arm64 --ignore-scripts --no-audit --no-fund --loglevel=error)
 
+# npm installs a `file:` dependency as a symlink. iOS installs — and every re-signing
+# step — flatten or drop that link, and Node then dies at boot with
+# "No usable native binding found for node-addon-require-builtin-ios-arm64".
+# Ship a real directory instead. `.bin` links point at CLIs that cannot run on iOS.
+dep="$out/node_modules/node-addon-require-builtin-ios-arm64"
+if [ -L "$dep" ]; then
+  target=$(readlink "$dep")
+  rm -f "$dep"
+  cp -R "$out/node_modules/$target" "$dep"
+fi
+[ -d "$dep" ] || { echo "engine: node-addon-require-builtin-ios-arm64 missing"; exit 1; }
+rm -rf "$out/node_modules/.bin"
+
 nm="$out/node_modules"
 before=$(du -sk "$nm" | cut -f1)
 # Native code: Mach-O/ELF addons and executables for other platforms.
