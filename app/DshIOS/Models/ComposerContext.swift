@@ -98,7 +98,11 @@ final class ComposerContext: ObservableObject {
     }
 
     static func providerName(_ id: String, _ name: String?) -> String {
-        id == "deepseek-account" ? String(localized: "DeepSeek 账号") : (name ?? id)
+        if id == "deepseek-account" { return String(localized: "DeepSeek 账号") }
+        let name = name ?? id
+        // Relay and custom routes carry （API）, so a mirror of "DeepSeek" is never mistaken
+        // for the official one in the model menu.
+        return ["deepseek-official"].contains(id) ? name : "\(name)（API）"
     }
 
     /// The account and official providers first; the others keep their catalog order.

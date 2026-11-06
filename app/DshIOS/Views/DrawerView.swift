@@ -52,6 +52,8 @@ struct DrawerView: View {
     @State private var remoteMore = false
     @State private var searching = false
     @State private var removingWorkspace: Workspace?
+    /// 长按 →「删除会话」: the engine has no session/delete, so this archives (恢复在归档里).
+    @State private var deletingSession: SessionSummary?
     @State private var showNewWorkspace = false
 
     private static let ungrouped = ""
@@ -85,6 +87,15 @@ struct DrawerView: View {
         .task(id: search) { await searchRemote() }
         .onChange(of: searchRequest) { _ in searchFocused = true }
         .onChange(of: groupBy) { _ in Haptics.select() }
+        .confirmationDialog("删除「\(deletingSession?.displayTitle ?? "")」？", isPresented: Binding(get: { deletingSession != nil }, set: { if !$0 { deletingSession = nil } }), titleVisibility: .visible) {
+            Button("删除", role: .destructive) {
+                if let session = deletingSession {
+                    Task { await app.archive(session.id); app.showToast(String(localized: "已删除，可在归档中恢复"), tone: .success) }
+                }
+                deletingSession = nil
+            }
+            Button("取消", role: .cancel) { deletingSession = nil }
+        }
         .confirmationDialog("删除「\(removingWorkspace?.displayTitle ?? "")」？", isPresented: Binding(get: { removingWorkspace != nil }, set: { if !$0 { removingWorkspace = nil } }), titleVisibility: .visible) {
             Button("删除工作区", role: .destructive) {
                 if let workspace = removingWorkspace {
@@ -642,6 +653,8 @@ struct DrawerView: View {
             Task { if archived { await app.unarchive(session.id) } else { await app.archive(session.id) } }
         } label: { Label(archived ? "取消归档" : "归档会话", systemImage: archived ? "tray.and.arrow.up" : "archivebox") }
         Button { app.copySessionId(session.id) } label: { Label("复制会话 ID", systemImage: "doc.on.doc") }
+        Divider()
+        Button(role: .destructive) { deletingSession = session } label: { Label("删除会话", systemImage: "trash") }
     }
 }
 

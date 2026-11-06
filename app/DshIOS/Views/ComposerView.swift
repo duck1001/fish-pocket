@@ -670,13 +670,16 @@ struct ComposerView: View {
     // MARK: Attachments
 
     private func loadPhotos(_ items: [PhotosPickerItem]) async {
-        var refusal: String?
+        var images: [UIImage] = []
         for item in items {
             guard let data = try? await item.loadTransferable(type: Data.self), let image = UIImage(data: data) else { continue }
-            if let reason = composer.addImage(image) { refusal = reason }
+            images.append(image)
         }
+        // Clear first: assigning the selection back re-runs onChange, and a non-empty list
+        // would load the same photos a second time (the picker flashing as it does).
         photos = []
-        if let refusal { app.showToast(refusal) }
+        guard !images.isEmpty else { return }
+        if let refusal = composer.addImages(images) { app.showToast(refusal) }
     }
 }
 

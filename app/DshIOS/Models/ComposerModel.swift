@@ -628,39 +628,71 @@ final class ComposerModel: ObservableObject {
     /// (HEIC is not accepted). Returns the refusal to show, if any.
     @discardableResult
     func addImage(_ image: UIImage, name: String? = nil) -> String? {
+        addImages([image], names: [name])
+    }
+
+    /// One pick of several photos: validated against a running total and appended in a
+    /// single transaction, so the tray redraws once instead of flashing per image.
+    @discardableResult
+    func addImages(_ images: [UIImage], names: [String?] = []) -> String? {
         let limits = imageLimits
-        let images = attachments.filter(\.isImage)
-        if images.count + 1 > limits.maxImagesPerMessage {
-            return String(localized: "一条消息最多添加 \(limits.maxImagesPerMessage) 张图片")
-        }
         guard limits.mediaTypes.contains("image/jpeg") else { return String(localized: "仅支持 PNG、JPG、WebP、GIF 格式的图片") }
-        let side = CGFloat(min(2048, limits.maxImageDimension))
-        let scale = min(1, side / max(image.size.width, image.size.height))
-        let size = CGSize(width: (image.size.width * scale).rounded(), height: (image.size.height * scale).rounded())
-        let scaled = image.preparingThumbnail(of: size) ?? image
-        guard let jpeg = scaled.jpegData(compressionQuality: 0.85) else { return String(localized: "仅支持 PNG、JPG、WebP、GIF 格式的图片") }
-        if jpeg.count > limits.maxImageBytes {
-            return String(localized: "单张图片不能超过 \(ImageLimits.sizeText(limits.maxImageBytes))")
+        let existing = attachments.filter(\.isImage)
+        var accepted: [DraftAttachment] = []
+        var refusal: String?
+        for (offset, image) in images.enumerated() {
+            if existing.count + accepted.count + 1 > limits.maxImagesPerMessage {
+                refusal = String(localized: "一条消息最多添加 \(limits.maxImagesPerMessage) 张图片")
+                break
+            }
+            let side = CGFloat(min(2048, limits.maxImageDimension))
+            let scale = min(1, side / max(image.size.width, image.size.height))
+            let size = CGSize(width: (image.size.width * scale).rounded(), height: (image.size.height * scale).rounded())
+            let scaled = image.preparingThumbnail(of: size) ?? image
+            guard let jpeg = scaled.jpegData(compressionQuality: 0.85) else {
+                refusal = String(localized: "仅支持 PNG、JPG、WebP、GIF 格式的图片")
+                continue
+            }
+            if jpeg.count > limits.maxImageBytes {
+                refusal = String(localized: "单张图片不能超过 \(ImageLimits.sizeText(limits.maxImageBytes))")
+                continue
+            }
+            let total = existing.reduce(0) { $0 + $1.bytes } + accepted.reduce(0) { $0 + $1.bytes }
+            if total + jpeg.count > limits.maxMessageImageBytes {
+                refusal = String(localized: "图片总大小超过 \(ImageLimits.sizeText(limits.maxMessageImageBytes))，请移除部分图片")
+                continue
+            }
+            let given = offset < names.count ? names[offset] : nil
+            let base = given.map { ($0 as NSString).deletingPathExtension } ?? "image-\(existing.count + accepted.count + 1)"
+            accepted.append(DraftAttachment(name: base + ".jpg", bytes: jpeg.count, kind: .image(mediaType: "image/jpeg", data: jpeg.base64EncodedString(), preview: scaled)))
         }
-        if images.reduce(0, { $0 + $1.bytes }) + jpeg.count > limits.maxMessageImageBytes {
-            return String(localized: "图片总大小超过 \(ImageLimits.sizeText(limits.maxMessageImageBytes))，请移除部分图片")
-        }
-        let base = name.map { ($0 as NSString).deletingPathExtension } ?? "image-\(images.count + 1)"
-        attachments.append(DraftAttachment(name: base + ".jpg", bytes: jpeg.count, kind: .image(mediaType: "image/jpeg", data: jpeg.base64EncodedString(), preview: scaled)))
-        return nil
+        if !accepted.isEmpty { attachments.append(contentsOf: accepted) }
+        return refusal
     }
 
     var remainingImageSlots: Int { max(0, imageLimits.maxImagesPerMessage - attachments.filter(\.isImage).count) }
 
     /// Files from the Files app: images join as images, everything else uploads now.
+    /// Read through NSFileCoordinator, which is what downloads an item that lives in iCloud
+    /// and serialises access with other pickers — without it a cloud file reads as empty.
     func addFiles(_ urls: [URL]) {
         var refusal: String?
         for url in urls {
             let scoped = url.startAccessingSecurityScopedResource()
             defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-            let type = UTType(filenameExtension: url.pathExtension)
-            if type?.conforms(to: .image) == true, let data = try? Data(contentsOf: url), let image = UIImage(data: data) {
-                if let reason = addImage(image, name: url.lastPathComponent) { refusal = reason }
+
+            var coordinatorError: NSError?
+            var readError: Error?
+            var data: Data?
+            NSFileCoordinator().coordinate(readingItemAt: url, options: [], error: &coordinatorError) { readURL in
+                do { data = try Data(contentsOf: readURL) } catch { readError = error }
+            }
+            guard let data else {
+                refusal = coordinatorError?.localizedDescription ?? readError?.localizedDescription ?? String(localized: "读取文件失败")
+                continue
+            }
+            if let type = UTType(filenameExtension: url.pathExtension), type.conforms(to: .image), let image = UIImage(data: data) {
+                if let reason = addImages([image], names: [url.lastPathComponent]) { refusal = reason }
                 continue
             }
             // A private copy: the security-scoped URL may not outlive the picker, and retries reread it.
@@ -668,13 +700,12 @@ final class ComposerModel: ObservableObject {
             let copy = folder.appendingPathComponent(url.lastPathComponent)
             do {
                 try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-                try FileManager.default.copyItem(at: url, to: copy)
+                try data.write(to: copy)
             } catch {
                 refusal = error.localizedDescription
                 continue
             }
-            let bytes = (try? copy.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
-            let attachment = DraftAttachment(name: url.lastPathComponent, bytes: bytes, kind: .file(url: copy), upload: .uploading(loaded: 0, total: Int64(bytes)))
+            let attachment = DraftAttachment(name: url.lastPathComponent, bytes: data.count, kind: .file(url: copy), upload: .uploading(loaded: 0, total: Int64(data.count)))
             attachments.append(attachment)
             enqueueUpload(attachment.id)
         }

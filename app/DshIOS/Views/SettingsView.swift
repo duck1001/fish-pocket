@@ -19,6 +19,7 @@ struct SettingsView: View {
     @State private var catalogDefaultPermission = ""
     @State private var confirmingFullAccess = false
     @AppStorage(BackgroundKeeper.enabledKey) private var keepAlive = true
+    @AppStorage(IconStylePreference.key) private var iconStyle = IconStylePreference.line
     @State private var confirmingKeepAliveOff = false
     @AppStorage(BackgroundKeeper.continuedKey) private var continuedProcessing = false
 
@@ -51,6 +52,10 @@ struct SettingsView: View {
                             Text("跟随系统").tag("system")
                             Text("浅色").tag("light")
                             Text("深色").tag("dark")
+                        }
+                        Picker("图标", selection: Binding(get: { iconStyle }, set: { iconStyle = $0 })) {
+                            Text("线性").tag(IconStylePreference.line)
+                            Text("填充").tag(IconStylePreference.fill)
                         }
                     }
                 }

@@ -31,6 +31,7 @@ struct ComposerStatusBar: View {
                     .padding(.bottom, 8)
                     .transition(.opacity)
             }
+            ContextMeter(model: model, composer: composer, rate: model.rate)
         }
         .animation(.smoothSpring, value: hasStatus)
         .animation(.smoothSpring, value: waiting)
@@ -504,5 +505,53 @@ private struct QueueSection: View {
             await composer.updateQueue(id, action)
             if busy == id { busy = nil }
         }
+    }
+}
+
+
+/// C-122, above the input: how full the context is and how fast the turn is writing.
+/// `contextPressure` comes from the engine; the rate is an estimate from streamed characters.
+private struct ContextMeter: View {
+    @ObservedObject var model: SessionModel
+    @ObservedObject var composer: ComposerModel
+    @ObservedObject var rate: LiveRate
+
+    var body: some View {
+        let occupancy = composer.contextOccupancy
+        let speed = model.running ? rate.tokensPerSecond : 0
+        if occupancy != nil || speed > 0 {
+            HStack(spacing: 8) {
+                Spacer(minLength: 0)
+                if let occupancy {
+                    HStack(spacing: 5) {
+                        Capsule()
+                            .fill(Palette.stroke)
+                            .frame(width: 26, height: 3)
+                            .overlay(alignment: .leading) {
+                                Capsule()
+                                    .fill(occupancy.percent >= 80 ? Palette.waiting : Palette.secondary)
+                                    .frame(width: 26 * CGFloat(min(100, occupancy.percent)) / 100, height: 3)
+                            }
+                        Text("\(Self.compact(occupancy.used)) / \(Self.compact(occupancy.window))")
+                        Text("\(occupancy.percent)%")
+                    }
+                }
+                if speed > 0 {
+                    Text("≈ \(Int(speed.rounded())) tok/s")
+                }
+            }
+            .font(.caption2.monospacedDigit())
+            .foregroundStyle(Palette.faint)
+            .padding(.horizontal, 18)
+            .padding(.bottom, 4)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("上下文 \(occupancy?.percent ?? 0)%")
+        }
+    }
+
+    private static func compact(_ value: Int) -> String {
+        if value >= 1_000_000 { return String(format: "%.1fM", Double(value) / 1_000_000) }
+        if value >= 1_000 { return String(format: "%.1fk", Double(value) / 1_000) }
+        return "\(value)"
     }
 }

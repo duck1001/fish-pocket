@@ -55,10 +55,14 @@ struct RootView: View {
     let session: String?
     @EnvironmentObject private var engine: NodeEngine
     @AppStorage(ThemePreference.key) private var themePreference = ThemePreference.system
+    @AppStorage(IconStylePreference.key) private var iconStyle = IconStylePreference.line
     @ObservedObject private var connection = EngineConnection.shared
 
     var body: some View {
-        content.background(WindowAppearance(style: ThemePreference.style(themePreference)))
+        content
+            .background(WindowAppearance(style: ThemePreference.style(themePreference)))
+            // One switch for every SF Symbol: outline, or filled.
+            .symbolVariant(IconStylePreference.variant(iconStyle))
     }
 
     @ViewBuilder

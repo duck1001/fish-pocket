@@ -64,10 +64,9 @@ targets:
           UIImageName: LaunchMark
           UIImageRespectsSafeAreaInsets: false
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
-        UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
         # iPad: several windows, each on its own conversation (one engine connection).
         UIApplicationSceneManifest:
-          UIApplicationSupportsMultipleScenes: true
+          UIApplicationSupportsMultipleScenes: false
         # ProMotion: without this an iPhone app stays at 60 Hz.
         CADisableMinimumFrameDurationOnPhone: true
         # 输入框的「拍照」(C-104).
@@ -92,6 +91,8 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.wsw.dsh-ios
+        # iPhone only: no iPad layout, no iPad windows.
+        TARGETED_DEVICE_FAMILY: "1"
         # Design tokens (docs/design/README.md §3) live in Assets.xcassets; the accent is the ink colour.
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         ENABLE_USER_SCRIPT_SANDBOXING: NO

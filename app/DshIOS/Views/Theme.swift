@@ -29,6 +29,17 @@ enum Palette {
 /// The appearance choice lives in the engine (`ui-theme.preference`, shared with the web and
 /// desktop clients). The app keeps the last value it read, because the screens shown while
 /// the engine starts need it before the engine can answer.
+/// SF Symbols across the app: outline or filled. Presentation only, kept on the device.
+enum IconStylePreference {
+    static let key = "dsh.icon.style"
+    static let line = "line"
+    static let fill = "fill"
+
+    static func variant(_ value: String) -> SymbolVariants {
+        value == fill ? .fill : .none
+    }
+}
+
 enum ThemePreference {
     static let key = "dsh.theme.preference"
     static let system = "system"

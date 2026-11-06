@@ -27,7 +27,10 @@ struct ProviderRow: Identifiable, Hashable {
     var isAccount: Bool { provider == "deepseek-account" }
 
     var displayName: String {
-        isAccount ? String(localized: "DeepSeek 账号") : (entry["displayName"].string ?? provider)
+        if isAccount { return String(localized: "DeepSeek 账号") }
+        let name = entry["displayName"].string ?? provider
+        // A relay sold as "DeepSeek" must not read as the official route.
+        return entry["settingsNs"].string == "llm-pi-ai" ? "\(name)（自定义 API）" : name
     }
 
     /// `显示名 (route)`, or the route alone when they are the same.
@@ -1291,9 +1294,8 @@ private struct CustomProviderForm: View {
     @State private var displayName = ""
     @State private var baseURL = ""
     @State private var api = ""
-    /// 「强制深度思考」: declare one high thinking level per model, so picking the model
-    /// always sends the reasoning parameter.
-    @State private var forceThinking = true
+    /// 思考程度: off / low / medium / high / max, written into every model of the provider.
+    @State private var thinkingLevel = "high"
     @State private var keyDraft = ""
     @State private var models: [JSON] = []
     @State private var busy = false
@@ -1434,9 +1436,16 @@ private struct CustomProviderForm: View {
                 Section { Text(modelProblem).font(.footnote).foregroundStyle(Palette.waiting) }.groupedRow()
             }
             Section {
-                Toggle("强制开启深度思考", isOn: $forceThinking).disabled(locked)
+                Picker("思考程度", selection: $thinkingLevel) {
+                    Text("关闭").tag("off")
+                    Text("低").tag("low")
+                    Text("中").tag("medium")
+                    Text("高").tag("high")
+                    Text("高级").tag("max")
+                }
+                .disabled(locked)
             } footer: {
-                Text("给每个模型只声明 high 一个思考等级，选中它时始终按 high 发送推理参数。仅对支持 reasoning_effort 的 OpenAI 兼容接口有效；接口不认这个参数会直接报错，可以先关掉再测。")
+                Text("写进这个提供商的每个模型：关闭 = 不走推理参数；其余档位只声明该档加「关闭」，选中模型时始终按这一档发送。接口不认 reasoning_effort 会报错，那就选「关闭」。")
             }
             .groupedRow()
         }
@@ -1450,10 +1459,11 @@ private struct CustomProviderForm: View {
         .saveToolbar(canSave: ready && !busy && app.settings.writable, saving: busy) { Task { await create() } }
     }
 
-    /// 「强制深度思考」: every model declares exactly one thinking level, so a session that
-    /// selects it sends the reasoning parameter without the user choosing a level.
-    private static func deepThinking(_ models: [JSON]) -> [JSON] {
-        models.map { $0.setting(["reasoningEfforts"], .object(["high": .string("high")])) }
+    /// 「思考程度」: `off` makes each model a non-reasoning one; every other level declares
+    /// that level (plus `off`), so a session that selects the model sends it.
+    private static func reasoningEfforts(_ level: String) -> JSON {
+        guard level != "off" else { return .bool(false) }
+        return .object(["off": .null, level: .string(level)])
     }
 
     private func create() async {
@@ -1463,7 +1473,7 @@ private struct CustomProviderForm: View {
         let target = route
         let keyRef = deriveKeyRef(target)
         if committedRoute == nil {
-            var profile: [String: JSON] = ["api": .string(api), "baseURL": .string(normalizedURL), "models": .array(forceThinking ? Self.deepThinking(models) : models)]
+            var profile: [String: JSON] = ["api": .string(api), "baseURL": .string(normalizedURL), "models": .array(models.map { $0.setting(["reasoningEfforts"], Self.reasoningEfforts(thinkingLevel)) })]
             if !displayName.isEmpty { profile["displayName"] = .string(displayName) }
             if !keyValue.isEmpty { profile["apiKeyEnv"] = .string(keyRef) }
             do {

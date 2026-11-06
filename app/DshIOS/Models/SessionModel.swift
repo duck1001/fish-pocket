@@ -11,6 +11,10 @@ final class SessionModel: ObservableObject {
 
     @Published private(set) var items: [TimelineItem] = []
     @Published private(set) var live: [AssistantBlock] = []
+    /// Rough output rate while a turn streams. Its own object: publishing it on the Session
+    /// would redraw the whole conversation several times a second.
+    let rate = LiveRate()
+    private var rateSamples: [(Date, Int)] = []
     @Published private(set) var running = false
     @Published private(set) var title: String?
     @Published private(set) var todos: [TodoItem] = []
@@ -210,7 +214,7 @@ final class SessionModel: ObservableObject {
     }
 
     private func publishLive() {
-        live = livePartials.keys.sorted().compactMap { index in
+        let next: [AssistantBlock] = livePartials.keys.sorted().compactMap { index in
             let partial = livePartials[index]!
             switch partial.kind {
             case "text": return .text(id: "live-\(index)", text: partial.text)
@@ -220,6 +224,17 @@ final class SessionModel: ObservableObject {
                 return .tool(ToolCall(id: partial.toolId ?? "live-\(index)", name: partial.toolName ?? "…", arguments: args, rawArguments: partial.text))
             }
         }
+        // Rough live throughput: between usage frames the only signal is how fast text arrives.
+        let characters = livePartials.values.reduce(0) { $0 + $1.text.count }
+        let now = Date()
+        rateSamples.append((now, characters))
+        rateSamples.removeAll { now.timeIntervalSince($0.0) > 2.5 }
+        if let first = rateSamples.first, now.timeIntervalSince(first.0) >= 0.6, characters > first.1 {
+            let value = (Double(characters - first.1) / 3) / now.timeIntervalSince(first.0)
+            if abs(value - rate.tokensPerSecond) > 0.5 { rate.tokensPerSecond = value }
+        }
+        // Nothing on screen changed (e.g. tool arguments streaming): do not invalidate the view.
+        if next != live { live = next }
     }
 
     private func resetLive() {
@@ -227,6 +242,8 @@ final class SessionModel: ObservableObject {
         livePublish = nil
         liveAttempt = nil
         livePartials = [:]
+        rateSamples = []
+        if rate.tokensPerSecond != 0 { rate.tokensPerSecond = 0 }
         if !live.isEmpty { live = [] }
     }
 
@@ -628,4 +645,11 @@ final class SessionModel: ObservableObject {
     }
 
     func cachedImage(_ attachmentId: String) -> UIImage? { imageCache.object(forKey: attachmentId as NSString) }
+}
+
+
+/// Live output rate, observed only by the meter above the input.
+@MainActor
+final class LiveRate: ObservableObject {
+    @Published var tokensPerSecond: Double = 0
 }
