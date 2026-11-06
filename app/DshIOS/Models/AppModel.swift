@@ -170,6 +170,14 @@ final class AppModel: ObservableObject {
         cordis.attach(self)
     }
 
+    /// 删除会话：归档（引擎没有 session/delete），再把 `$DSH_HOME` 下属于它的记录删掉。
+    /// 返回删掉的文件/目录数；引擎内存里的行要等下次启动才消失。
+    @discardableResult
+    func deleteSession(_ id: String) async -> Int {
+        await archive(id)
+        return SessionFiles.delete(id)
+    }
+
     func connect() async {
         do {
             try await client.authenticate()

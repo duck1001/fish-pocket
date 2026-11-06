@@ -87,10 +87,15 @@ struct DrawerView: View {
         .task(id: search) { await searchRemote() }
         .onChange(of: searchRequest) { _ in searchFocused = true }
         .onChange(of: groupBy) { _ in Haptics.select() }
-        .confirmationDialog("删除「\(deletingSession?.displayTitle ?? "")」？", isPresented: Binding(get: { deletingSession != nil }, set: { if !$0 { deletingSession = nil } }), titleVisibility: .visible) {
+        .confirmationDialog("彻底删除「\(deletingSession?.displayTitle ?? "")」？删除后无法恢复。", isPresented: Binding(get: { deletingSession != nil }, set: { if !$0 { deletingSession = nil } }), titleVisibility: .visible) {
             Button("删除", role: .destructive) {
                 if let session = deletingSession {
-                    Task { await app.archive(session.id); app.showToast(String(localized: "已删除，可在归档中恢复"), tone: .success) }
+                    Task {
+                        let removed = await app.deleteSession(session.id)
+                        app.showToast(removed > 0
+                            ? String(localized: "已删除，重启 App 后列表才完全消失")
+                            : String(localized: "已删除（本地没有找到记录文件）"), tone: .success)
+                    }
                 }
                 deletingSession = nil
             }

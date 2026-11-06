@@ -20,6 +20,8 @@ struct SettingsView: View {
     @State private var confirmingFullAccess = false
     @AppStorage(BackgroundKeeper.enabledKey) private var keepAlive = true
     @AppStorage(IconStylePreference.key) private var iconStyle = IconStylePreference.line
+    @AppStorage(Soul.languageKey) private var soulLanguage = Soul.automatic
+    @AppStorage(Soul.toneKey) private var soulTone = Soul.gentle
     @State private var confirmingKeepAliveOff = false
     @AppStorage(BackgroundKeeper.continuedKey) private var continuedProcessing = false
 
@@ -28,6 +30,17 @@ struct SettingsView: View {
     private var engineRunning: Bool {
         if case .running = engine.phase { return true }
         return false
+    }
+
+    /// 「中文 · 温和」 in the settings row.
+    private var soulSummary: String {
+        let language: String = switch soulLanguage {
+        case Soul.chinese: String(localized: "中文")
+        case Soul.english: String(localized: "英文")
+        default: String(localized: "自动")
+        }
+        let tone: String = soulTone == Soul.direct ? String(localized: "直接") : String(localized: "温和")
+        return "\(language) · \(tone)"
     }
 
     var body: some View {
@@ -44,6 +57,7 @@ struct SettingsView: View {
                         valueRow("账号", app.account.signedIn ? (app.account.displayName ?? String(localized: "已登录")) : String(localized: "未登录"))
                     }
                     NavigationLink { ModelProvidersPage() } label: { valueRow("模型", defaultModel ?? "") }
+                    NavigationLink { SoulView() } label: { valueRow("灵魂", soulSummary) }
                     if mirror.serves("permission") { permissionPicker }
                     if let theme = mirror.namespace("ui-theme") {
                         Picker("外观", selection: Binding(get: { theme["value"]["preference"].string ?? "system" }, set: { value in

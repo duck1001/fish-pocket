@@ -1380,6 +1380,10 @@ private struct CustomProviderForm: View {
         .onAppear {
             if api.isEmpty { api = protocols.first ?? "" }
             if openedAt == nil { openedAt = namespace["revision"].int }
+            // The schema decides which levels exist; keep the draft inside them.
+            if !thinkingOptions.contains(thinkingLevel) {
+                thinkingLevel = thinkingOptions.last(where: { $0 != "off" }) ?? "off"
+            }
         }
     }
 
@@ -1437,11 +1441,11 @@ private struct CustomProviderForm: View {
             }
             Section {
                 Picker("思考程度", selection: $thinkingLevel) {
-                    Text("关闭").tag("off")
-                    Text("低").tag("low")
-                    Text("中").tag("medium")
-                    Text("高").tag("high")
-                    Text("高级").tag("max")
+                    // Only what this provider's schema offers: a route with just `high`
+                    // must not be given a `max` it cannot honour.
+                    ForEach(thinkingOptions, id: \.self) { level in
+                        Text(Self.levelName(level)).tag(level)
+                    }
                 }
                 .disabled(locked)
             } footer: {
@@ -1457,6 +1461,24 @@ private struct CustomProviderForm: View {
         .keyboardDoneButton()
         .interactiveDismissDisabled(true)
         .saveToolbar(canSave: ready && !busy && app.settings.writable, saving: busy) { Task { await create() } }
+    }
+
+    /// The levels this provider can actually express, from `llm-pi-ai`'s schema.
+    private var thinkingOptions: [String] {
+        reasoningLevels.isEmpty ? ["off", "low", "medium", "high"] : reasoningLevels
+    }
+
+    private static func levelName(_ level: String) -> String {
+        switch level {
+        case "off": "关闭"
+        case "minimal": "极低"
+        case "low": "低"
+        case "medium": "中"
+        case "high": "高"
+        case "xhigh": "很高"
+        case "max": "高级"
+        default: level
+        }
     }
 
     /// 「思考程度」: `off` makes each model a non-reasoning one; every other level declares
