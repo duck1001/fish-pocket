@@ -363,7 +363,7 @@ struct ComposerView: View {
     private var input: some View {
         // Between three lines and four, whatever the text size.
         let threeLines = UIFont.preferredFont(forTextStyle: .callout).lineHeight * 3.5
-        return TextField(placeholder, text: $composer.text, axis: .vertical)
+        return TextField(placeholder, text: Binding(get: { composer.text }, set: { composer.text = $0 }), axis: .vertical)
             .font(.callout)
             .lineLimit(1...5)
             .focused($focused)
