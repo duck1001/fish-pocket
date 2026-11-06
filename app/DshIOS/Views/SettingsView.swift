@@ -7,7 +7,7 @@ import SwiftUI
 /// the engine is not running. Every page reads the shared settings mirror, so a write
 /// anywhere shows everywhere.
 struct SettingsView: View {
-    @Environment(AppModel.self) private var app
+    @EnvironmentObject private var app: AppModel
     @EnvironmentObject private var engine: NodeEngine
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openSession) private var openSession
@@ -243,7 +243,7 @@ struct SettingsView: View {
 
 /// 设置 → 高级: the pages for people who look under the hood.
 private struct AdvancedSettingsPage: View {
-    @Environment(AppModel.self) private var app
+    @EnvironmentObject private var app: AppModel
     @EnvironmentObject private var engine: NodeEngine
     @State private var showWeb = false
     @State private var showCordis = false
@@ -282,7 +282,7 @@ private struct AdvancedSettingsPage: View {
 /// 设置 → 关于: the way to a newer version, or a manual check for one.
 private struct UpdateRow: View {
     @Environment(\.openURL) private var openURL
-    private let checker = UpdateChecker.shared
+    @ObservedObject private var checker = UpdateChecker.shared
 
     var body: some View {
         switch checker.status {
@@ -308,7 +308,7 @@ private struct UpdateRow: View {
 
 /// 设置 → 关于: versions, storage and how the engine is doing.
 private struct AboutPage: View {
-    @Environment(AppModel.self) private var app
+    @EnvironmentObject private var app: AppModel
     @EnvironmentObject private var engine: NodeEngine
     let engineVersion: String?
     @State private var storage: Int64?
@@ -359,7 +359,7 @@ private struct AboutPage: View {
 
 /// 全部设置: every settings namespace, by topic.
 private struct AllSettingsPage: View {
-    @Environment(AppModel.self) private var app
+    @EnvironmentObject private var app: AppModel
 
     private var mirror: SettingsMirror { app.settings }
 
@@ -543,7 +543,7 @@ private struct EngineLogView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(16)
         }
-        .defaultScrollAnchor(.bottom)
+        .scrollAnchor16(.bottom)
         .background(Palette.grouped)
         .navigationTitle("引擎日志")
         .navigationBarTitleDisplayMode(.inline)

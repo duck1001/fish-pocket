@@ -28,7 +28,7 @@ struct SignInSheet: View {
     /// The API Key alternative; nil hides it.
     var addAPIKey: (() -> Void)?
 
-    @Environment(AppModel.self) private var app
+    @EnvironmentObject private var app: AppModel
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
     @State private var safari: SFSafariViewController?
@@ -63,7 +63,7 @@ struct SignInSheet: View {
             if autoStart && !account.attemptActive && !account.signedIn { await start() }
             else { openBrowserIfNeeded() }
         }
-        .onChange(of: account.view) { _, _ in update() }
+        .onChange(of: account.view) { _ in update() }
         .onDisappear {
             // Closing the dialog gives the attempt up, as on the web; Safari covering it does not.
             guard safari?.presentingViewController == nil else { return }
@@ -194,7 +194,7 @@ struct SignInSheet: View {
 /// 设置 → 账号与余额 (`settings.section#account`): identity, wallet balances,
 /// usage and top-up, with the API Key alternative and sign-out below.
 struct AccountPage: View {
-    @Environment(AppModel.self) private var app
+    @EnvironmentObject private var app: AppModel
     @State private var signingIn = false
     @State private var autoStart = false
     @State private var signOutCheck: SignOutCheck?
@@ -246,7 +246,7 @@ struct AccountPage: View {
         .refreshable { await account.refresh() }
         .sheet(isPresented: $signingIn) {
             SignInSheet(autoStart: autoStart, addAPIKey: { Task { try? await Task.sleep(for: .milliseconds(400)); editKey() } })
-                .environment(app)
+                .environmentObject(app)
         }
         // Here, not on 设置: presenting from a covered view waits until it is back on screen.
         .alert("DeepSeek API Key", isPresented: $editingKey) {
@@ -459,7 +459,7 @@ struct AccountAvatar: View {
 
 /// Shell notices from the account: the toast line and the bonus card stack.
 struct AccountNotices: View {
-    @Environment(AppModel.self) private var app
+    @EnvironmentObject private var app: AppModel
 
     var body: some View {
         VStack(spacing: 8) {
@@ -484,8 +484,8 @@ struct AccountNotices: View {
             }
         }
         .padding(.top, 4)
-        .animation(.snappy, value: app.account.toast)
-        .animation(.snappy, value: app.account.bonuses)
+        .animation(.smoothSpring, value: app.account.toast)
+        .animation(.smoothSpring, value: app.account.bonuses)
     }
 }
 

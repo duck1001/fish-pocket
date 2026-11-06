@@ -4,15 +4,14 @@ import WebKit
 /// The Host's task catalog (`schedule/catalog`: every session, active and
 /// inactive, by target time), shared by the list and the detail it pushes.
 @MainActor
-@Observable
-final class ScheduleCatalog {
+final class ScheduleCatalog: ObservableObject {
     enum Status { case loading, ready, error }
 
-    private(set) var records: [JSON] = []
-    private(set) var status = Status.loading
+    @Published private(set) var records: [JSON] = []
+    @Published private(set) var status = Status.loading
     /// A read has succeeded at least once.
-    private(set) var settled = false
-    @ObservationIgnored private var epoch = 0
+    @Published private(set) var settled = false
+    @Published private var epoch = 0
 
     func load(_ client: EngineClient) async {
         epoch += 1
@@ -57,7 +56,7 @@ struct SchedulesView: View {
         }
     }
 
-    @Environment(AppModel.self) private var app
+    @EnvironmentObject private var app: AppModel
     @Environment(\.dismiss) private var dismiss
     @AppStorage("dsh.currentWorkspace") private var workspaceId = ""
     @State private var catalog = ScheduleCatalog()
@@ -243,9 +242,9 @@ struct ScheduleDetailView: View {
     enum Tab: String, CaseIterable { case rule, records }
     enum Failure: Equatable { case local, message(String) }
 
-    @Environment(AppModel.self) private var app
+    @EnvironmentObject private var app: AppModel
     @Environment(\.dismiss) private var dismiss
-    let catalog: ScheduleCatalog
+    @ObservedObject var catalog: ScheduleCatalog
     let taskId: String
     /// The session this page was opened from: its link is hidden.
     var withinSession: String?
@@ -340,12 +339,12 @@ struct ScheduleDetailView: View {
             Button("继续编辑", role: .cancel) {}
         }
         .onAppear(perform: sync)
-        .onChange(of: catalog.entry(taskId)) { _, _ in sync() }
+        .onChange(of: catalog.entry(taskId)) { _ in sync() }
         // The save button is at the top; the reason may be under the fold.
-        .onChange(of: failure) { _, failure in
+        .onChange(of: failure) { failure in
             if failure != nil, let failureText { app.showToast(failureText, tone: .warning) }
         }
-        .onChange(of: shown?.kind) { _, kind in
+        .onChange(of: shown?.kind) { kind in
             // A switch into the interval picks the unit that states it, unless one was chosen.
             guard kind == .every else { explicitUnit = false; return }
             if !explicitUnit, let seconds = shown?.draft.seconds { unit = .preferred(seconds) }
@@ -609,7 +608,7 @@ private struct EdgeSwipeAttempt: UIViewRepresentable {
 /// 任务运行记录 (S-105): the latest 20 deliveries, more on demand, each with the prompt it delivered.
 private struct DeliveryHistoryView: View {
     let task: JSON
-    @Environment(AppModel.self) private var app
+    @EnvironmentObject private var app: AppModel
     @State private var records: [JSON] = []
     @State private var nextBefore: String?
     @State private var pruned = false
@@ -733,13 +732,13 @@ private struct SavedPrompt: View {
                 .foregroundStyle(Palette.secondary)
                 .lineLimit(expanded ? nil : 2)
                 .textSelection(.enabled)
-                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { if !expanded { clampedHeight = $0 } }
+                .measureGeometry(for: CGFloat.self) { $0.size.height } action: { if !expanded { clampedHeight = $0 } }
                 .background {
                     Text(text).font(.footnote).fixedSize(horizontal: false, vertical: true).hidden()
-                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { fullHeight = $0 }
+                        .measureGeometry(for: CGFloat.self) { $0.size.height } action: { fullHeight = $0 }
                 }
             if expanded || fullHeight > clampedHeight + 1 {
-                Button { withAnimation(.snappy) { expanded.toggle() } } label: {
+                Button { withAnimation(.smoothSpring) { expanded.toggle() } } label: {
                     Label(expanded ? "收起" : "展开", systemImage: expanded ? "chevron.up" : "chevron.down")
                         .font(.caption)
                 }
@@ -754,7 +753,7 @@ private struct SavedPrompt: View {
 
 /// The engine's own web UI, for plugin interfaces that only exist in the browser.
 struct WebFallbackView: View {
-    @Environment(AppModel.self) private var app
+    @EnvironmentObject private var app: AppModel
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {

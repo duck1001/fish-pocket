@@ -15,8 +15,7 @@ enum CreatorMode {
 /// The Agent preset roster (`agentPresets/list`) with the display copy the web keeps
 /// for shipped presets: a preset that publishes no name is one of these.
 @MainActor
-@Observable
-final class AgentPresetCatalog {
+final class AgentPresetCatalog: ObservableObject {
     struct Option: Identifiable, Hashable {
         let id: String
         let name: String
@@ -33,10 +32,10 @@ final class AgentPresetCatalog {
         }
     }
 
-    private(set) var options: [Option] = []
+    @Published private(set) var options: [Option] = []
     /// The new-task default the Host reports.
-    private(set) var fallback = ""
-    private(set) var codingTools = true
+    @Published private(set) var fallback = ""
+    @Published private(set) var codingTools = true
 
     var visible: [Option] { options.filter { (codingTools || !$0.needsCodingTools) && !CreatorMode.isHidden($0.id) } }
 
@@ -70,8 +69,8 @@ final class AgentPresetCatalog {
 /// session; once the conversation starts the Host locks it.
 struct AgentPresetChip: View {
     let sessionId: String
-    let catalog: AgentPresetCatalog
-    @Environment(AppModel.self) private var app
+    @ObservedObject var catalog: AgentPresetCatalog
+    @EnvironmentObject private var app: AppModel
     @State private var current: String?
     @State private var choosing = false
 
@@ -128,7 +127,7 @@ struct AgentPresetChip: View {
 
 /// The presets with their full descriptions: a tap moves the tick and, once the Host agrees, closes.
 private struct AgentPresetSheet: View {
-    let catalog: AgentPresetCatalog
+    @ObservedObject var catalog: AgentPresetCatalog
     let chosen: String
     let select: (AgentPresetCatalog.Option) async -> Bool
     @Environment(\.dismiss) private var dismiss

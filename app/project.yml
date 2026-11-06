@@ -2,7 +2,7 @@ name: DshIOS
 options:
   bundleIdPrefix: com.wsw
   deploymentTarget:
-    iOS: "17.0"
+    iOS: "16.0"
   createIntermediateGroups: true
 packages:
   SwiftTerm:
@@ -118,6 +118,7 @@ targets:
   DshLiveActivity:
     type: app-extension
     platform: iOS
+    deploymentTarget: "16.1"
     sources:
       - path: LiveActivity
       - path: Shared

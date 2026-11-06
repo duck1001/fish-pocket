@@ -12,11 +12,11 @@ struct SessionTitleMenu: View {
     let sessionId: String
     /// The title from the session's own stream, before the list has it.
     let streamTitle: String?
-    let catalog: AgentPresetCatalog
+    @ObservedObject var catalog: AgentPresetCatalog
     /// More icons share the bar: on a phone the title narrows so it stays between them.
     var crowded = false
     let exportLog: () -> Void
-    @Environment(AppModel.self) private var app
+    @EnvironmentObject private var app: AppModel
     @Environment(\.horizontalSizeClass) private var sizeClass
 
     private var durableTitle: String? { app.durableTitle(of: sessionId) ?? streamTitle }
@@ -62,9 +62,9 @@ struct SessionTitleMenu: View {
 /// `.utilities`); a running one carries a dot.
 struct SessionHeaderActions: View {
     let sessionId: String
-    let jobs: JobsModel
+    @ObservedObject var jobs: JobsModel
     let open: (SessionHeaderSheet) -> Void
-    @Environment(AppModel.self) private var app
+    @EnvironmentObject private var app: AppModel
 
     private struct Entry: Identifiable {
         let sheet: SessionHeaderSheet

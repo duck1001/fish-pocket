@@ -146,8 +146,8 @@ extension View {
     func detailSheet() -> some View {
         presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
-            .presentationCornerRadius(36)
-            .presentationBackground(Palette.background)
+            .sheetCornerRadius(36)
+            .sheetBackground(Palette.background)
     }
 }
 
@@ -155,7 +155,7 @@ extension View {
 /// `call` is what the row knew, for a call the timeline no longer holds.
 struct ToolDetailSheet: View {
     let call: ToolCall
-    let model: SessionModel
+    @ObservedObject var model: SessionModel
     @Environment(\.fileLinkScope) private var scope
     @Environment(\.dismiss) private var dismiss
 

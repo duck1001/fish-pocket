@@ -14,12 +14,12 @@ enum Candidate {
 /// The keyboard leaves little room, so it holds a few two-line results and hands
 /// the rest to 「全部」; deleting the trigger character leaves it.
 struct CandidatePanel: View {
-    let model: SessionModel
-    let context: ComposerContext
+    @ObservedObject var model: SessionModel
+    @ObservedObject var context: ComposerContext
     let hit: TriggerHit
     let pick: (Candidate) -> Void
     let showAll: () -> Void
-    @Environment(AppModel.self) private var app
+    @EnvironmentObject private var app: AppModel
     @State private var references: [Row] = []
     @State private var searched = false
 
@@ -192,8 +192,8 @@ struct CandidateRowView: View {
 /// Every candidate with a search field: the panel's 「全部」 and the ＋ tray's
 /// 指令 and 引用 pages. A folder's chevron searches inside it.
 struct CandidateList: View {
-    let model: SessionModel
-    let context: ComposerContext
+    @ObservedObject var model: SessionModel
+    @ObservedObject var context: ComposerContext
     let trigger: Character
     /// The commands that only open a draft are listed when nothing precedes them.
     var leading = true
@@ -202,7 +202,7 @@ struct CandidateList: View {
     @State private var quoted: Bool
     @State private var references: [CandidatePanel.Row] = []
     @State private var searched = false
-    @Environment(AppModel.self) private var app
+    @EnvironmentObject private var app: AppModel
 
     init(model: SessionModel, context: ComposerContext, trigger: Character, query: String = "", quoted: Bool = false, leading: Bool = true, pick: @escaping (Candidate) -> Void) {
         self.model = model
@@ -276,8 +276,8 @@ extension TriggerHit: Identifiable {
 
 /// The panel's 「全部」 as a sheet.
 struct CandidateSheet: View {
-    let model: SessionModel
-    let context: ComposerContext
+    @ObservedObject var model: SessionModel
+    @ObservedObject var context: ComposerContext
     let hit: TriggerHit
     let pick: (Candidate) -> Void
     @Environment(\.dismiss) private var dismiss
@@ -294,7 +294,7 @@ struct CandidateSheet: View {
 /// Attachments waiting in the composer (C-106): image thumbnails and file cards
 /// with their upload state; a failed card retries on tap, ✕ removes.
 struct AttachmentRail: View {
-    let composer: ComposerModel
+    @ObservedObject var composer: ComposerModel
 
     var body: some View {
         if !composer.attachments.isEmpty {
@@ -316,7 +316,7 @@ struct AttachmentRail: View {
                     .padding(.top, 4)
                     .padding(.trailing, 4)
                 }
-                .onChange(of: composer.attachments.count) { old, new in
+                .onChange(of: composer.attachments.count) { new in
                     if new > old, let last = composer.attachments.last { withAnimation { proxy.scrollTo(last.id, anchor: .trailing) } }
                 }
             }

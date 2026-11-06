@@ -67,8 +67,7 @@ enum TerminalKey: CaseIterable {
 /// a time, and input is sent in order inside the Host's byte windows. A failed
 /// attachment stays on screen with its status until `connect()` runs again.
 @MainActor
-@Observable
-final class TerminalConnection {
+final class TerminalConnection: ObservableObject {
     enum Phase: Equatable {
         case connecting, connected, disconnected
         case failed(String)
@@ -78,31 +77,31 @@ final class TerminalConnection {
 
     let id = UUID()
     let terminalId: String
-    private(set) var phase = Phase.connecting
+    @Published private(set) var phase = Phase.connecting
     /// `WebTerminalInfo` of the last snapshot or state frame.
-    private(set) var info: JSON = .null
-    private(set) var writable = false
+    @Published private(set) var info: JSON = .null
+    @Published private(set) var writable = false
     /// ctrl is held for the next key; the emulator lets go after that key.
-    private(set) var controlActive = false
+    @Published private(set) var controlActive = false
 
     var exited: Bool { info["state"].string == "exited" }
 
-    @ObservationIgnored private let mux: StreamMux
-    @ObservationIgnored private let client: EngineClient
-    @ObservationIgnored private let sessionId: String
-    @ObservationIgnored private weak var view: SwiftTerm.TerminalView?
+    private let mux: StreamMux
+    private let client: EngineClient
+    private let sessionId: String
+    @Published private weak var view: SwiftTerm.TerminalView?
     /// Frames that arrived before the view did, oldest first (a snapshot replaces them).
-    @ObservationIgnored private var unrendered: [JSON] = []
-    @ObservationIgnored private var attachTask: Task<Void, Never>?
-    @ObservationIgnored private var retainTask: Task<Void, Never>?
-    @ObservationIgnored private var senderTask: Task<Void, Never>?
-    @ObservationIgnored private var attachment: Attachment?
-    @ObservationIgnored private var maxInputBytes = 65536
-    @ObservationIgnored private var maxBufferedBytes = 2_097_152
-    @ObservationIgnored private var maxCols = 500
-    @ObservationIgnored private var maxRows = 200
-    @ObservationIgnored private var size: (cols: Int, rows: Int)?
-    @ObservationIgnored private var controlReset: NSObjectProtocol?
+    @Published private var unrendered: [JSON] = []
+    @Published private var attachTask: Task<Void, Never>?
+    @Published private var retainTask: Task<Void, Never>?
+    @Published private var senderTask: Task<Void, Never>?
+    @Published private var attachment: Attachment?
+    @Published private var maxInputBytes = 65536
+    @Published private var maxBufferedBytes = 2_097_152
+    @Published private var maxCols = 500
+    @Published private var maxRows = 200
+    @Published private var size: (cols: Int, rows: Int)?
+    @Published private var controlReset: NSObjectProtocol?
 
     /// Largest single `write`: long pastes go up in pieces, each waiting for window room.
     private static let chunkBytes = 8192

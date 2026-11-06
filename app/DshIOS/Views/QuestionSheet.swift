@@ -11,21 +11,21 @@ struct PinnedActionsSheet<Content: View, Actions: View>: View {
 
     var body: some View {
         ScrollView {
-            content().onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
+            content().measureGeometry(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
         }
-        .scrollBounceBehavior(.basedOnSize)
+        .scrollBounce(.basedOnSize)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             actions()
-                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { actionsHeight = $0 }
+                .measureGeometry(for: CGFloat.self) { $0.size.height } action: { actionsHeight = $0 }
                 .background(Palette.background)
         }
         // Sized to the sheet's real edge; the actions carry their own margin above the home indicator.
         .ignoresSafeArea(.container, edges: .bottom)
         .presentationDetents([.height(contentHeight + actionsHeight)])
-        .presentationCornerRadius(36)
+        .sheetCornerRadius(36)
         .presentationDragIndicator(.visible)
-        .presentationBackground(Palette.background)
-        .presentationBackgroundInteraction(.enabled)
+        .sheetBackground(Palette.background)
+        .sheetBackgroundTappable(true)
     }
 }
 
@@ -33,7 +33,7 @@ struct PinnedActionsSheet<Content: View, Actions: View>: View {
 /// it stands at the top, with the countdown of a timed wait (C-116). Picking a single choice
 /// moves on; the free answer is the last choice, its field only there once picked.
 struct QuestionSheet: View {
-    let model: SessionModel
+    @ObservedObject var model: SessionModel
     let question: PendingQuestion
     @State private var failure: String?
     @State private var submitting = false
@@ -55,8 +55,8 @@ struct QuestionSheet: View {
             footer(current).padding(EdgeInsets(top: 8, leading: 22, bottom: 10, trailing: 22))
         }
         .onAppear(perform: preselectRecommended)
-        .onChange(of: customFocused) { _, focused in model.setAnswerFocus(question, focused: focused) }
-        .onChange(of: question.eventId) { _, _ in failure = nil }
+        .onChange(of: customFocused) { focused in model.setAnswerFocus(question, focused: focused) }
+        .onChange(of: question.eventId) { _ in failure = nil }
     }
 
     // MARK: Pages
@@ -92,7 +92,7 @@ struct QuestionSheet: View {
     private func move(to page: Int) {
         customFocused = false
         failure = nil
-        withAnimation(.snappy(duration: 0.2)) { update { $0.index = page } }
+        withAnimation(.smoothSpring(duration: 0.2)) { update { $0.index = page } }
     }
 
     // MARK: Parts
@@ -172,7 +172,7 @@ struct QuestionSheet: View {
             answer.skipped = false
             draft.answers[q.id] = answer
         }
-        withAnimation(.snappy(duration: 0.2)) {
+        withAnimation(.smoothSpring(duration: 0.2)) {
             if open { openOthers.remove(q.id) } else { openOthers.insert(q.id) }
         }
         if open {
@@ -305,7 +305,7 @@ struct QuestionSheet: View {
 
 /// What the wait is doing. While it counts down the whole bar is one button that stops it.
 private struct WaitStatus: View {
-    let model: SessionModel
+    @ObservedObject var model: SessionModel
     let question: PendingQuestion
 
     var body: some View {
@@ -371,7 +371,7 @@ enum QuestionOption {
 /// Plan review (C-119): the plan's title and first paragraph, the full text one tap away,
 /// then 同意执行 or 要求修改 (which ends the turn; the user answers in the composer).
 struct PlanReviewSheet: View {
-    let model: SessionModel
+    @ObservedObject var model: SessionModel
     let question: PendingQuestion
     let review: PlanReview
     @State private var showPlan = false

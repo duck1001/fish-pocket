@@ -19,8 +19,14 @@ struct WorkbenchCommands {
 }
 
 extension FocusedValues {
-    @Entry var windowCommands: WindowCommands?
-    @Entry var workbenchCommands: WorkbenchCommands?
+    var windowCommands: WindowCommands? {
+        get { self[WindowCommandsEnvironmentKey.self] }
+        set { self[WindowCommandsEnvironmentKey.self] = newValue }
+    }
+    var workbenchCommands: WorkbenchCommands? {
+        get { self[WorkbenchCommandsEnvironmentKey.self] }
+        set { self[WorkbenchCommandsEnvironmentKey.self] = newValue }
+    }
 }
 
 /// The keys follow macOS habits (⌘N, ⌘,) and the desktop client's where it has one.
@@ -69,4 +75,12 @@ struct ShellCommands: Commands {
     private func tab(_ tab: WorkbenchTab) -> some View {
         Button(tab.title) { workbench?.open(tab) }.disabled(workbench == nil)
     }
+}
+
+private struct WindowCommandsEnvironmentKey: EnvironmentKey {
+    static let defaultValue: WindowCommands? = nil
+}
+
+private struct WorkbenchCommandsEnvironmentKey: EnvironmentKey {
+    static let defaultValue: WorkbenchCommands? = nil
 }

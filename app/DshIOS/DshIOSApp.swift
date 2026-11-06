@@ -15,9 +15,9 @@ struct DshIOSApp: App {
                 .onAppear { engine.start() }
         }
         .commands { ShellCommands() }
-        .onChange(of: scenePhase) { _, phase in
+        .onChange(of: scenePhase) { phase in
             BackgroundKeeper.shared.scenePhaseChanged(to: phase)
-            LiveActivityController.shared.scenePhaseChanged(to: phase)
+            if #available(iOS 16.1, *) { LiveActivityController.shared.scenePhaseChanged(to: phase) }
         }
     }
 }
@@ -33,13 +33,12 @@ struct SessionWindow: Codable, Hashable {
 /// the same sessions, and the Live Activity and background work follow one model.
 /// Each engine generation (a new listening URL after a restart) gets a fresh one.
 @MainActor
-@Observable
-final class EngineConnection {
+final class EngineConnection: ObservableObject {
     static let shared = EngineConnection()
 
-    private(set) var app: AppModel?
+    @Published private(set) var app: AppModel?
     /// The generation being connected or connected; windows that arrive during it just wait.
-    @ObservationIgnored private var generation: Int?
+    @Published private var generation: Int?
 
     func connect(to url: URL, generation current: Int) async {
         guard current != generation else { return }
@@ -56,7 +55,7 @@ struct RootView: View {
     let session: String?
     @EnvironmentObject private var engine: NodeEngine
     @AppStorage(ThemePreference.key) private var themePreference = ThemePreference.system
-    private let connection = EngineConnection.shared
+    @ObservedObject private var connection = EngineConnection.shared
 
     var body: some View {
         content.background(WindowAppearance(style: ThemePreference.style(themePreference)))
@@ -76,7 +75,7 @@ struct RootView: View {
             Group {
                 if let app = connection.app {
                     MainView(session: session)
-                        .environment(app)
+                        .environmentObject(app)
                 } else {
                     StartupView(message: String(localized: "正在连接…"))
                 }
@@ -144,7 +143,7 @@ private struct EngineTrouble: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(12)
             }
-            .defaultScrollAnchor(.bottom)
+            .scrollAnchor16(.bottom)
             .background(Palette.grouped, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
 
             HStack(spacing: 12) {

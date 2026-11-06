@@ -5,7 +5,7 @@ import SwiftUI
 /// and the account notices. At the bottom, in the thumb's reach just above the
 /// composer, the shell toast (S-128, one at a time, a newer one replaces it).
 struct ShellNotices: View {
-    @Environment(AppModel.self) private var app
+    @EnvironmentObject private var app: AppModel
     @Environment(\.noticesHosted) private var hosted
     /// The banner waits a moment so a quick reconnect never flashes it.
     @State private var showOffline = false
@@ -35,8 +35,8 @@ struct ShellNotices: View {
         }
         .padding(.horizontal, 16)
         .padding(.bottom, bottomInset)
-        .animation(.snappy, value: app.toast)
-        .animation(.snappy, value: showOffline)
+        .animation(.smoothSpring, value: app.toast)
+        .animation(.smoothSpring, value: showOffline)
         .task(id: app.connected) {
             guard !app.connected, app.generation > 0 else { showOffline = false; return }
             try? await Task.sleep(for: .seconds(1.5))

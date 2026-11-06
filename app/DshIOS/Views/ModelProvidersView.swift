@@ -57,13 +57,12 @@ func deriveKeyRef(_ provider: String) -> String {
 
 /// The joined provider rows, re-read whenever settings, credentials or adapters change.
 @MainActor
-@Observable
-final class ModelProvidersModel {
-    private(set) var rows: [ProviderRow] = []
-    private(set) var loading = false
-    private(set) var ready = false
-    private(set) var error: String?
-    private(set) var credentialError: String?
+final class ModelProvidersModel: ObservableObject {
+    @Published private(set) var rows: [ProviderRow] = []
+    @Published private(set) var loading = false
+    @Published private(set) var ready = false
+    @Published private(set) var error: String?
+    @Published private(set) var credentialError: String?
 
     func load(_ app: AppModel) async {
         loading = true
@@ -139,7 +138,7 @@ final class ModelProvidersModel {
 /// 设置 → 模型 (M-01…M-13): the default model, one row per configured provider with its
 /// key state, an editor page per provider, and the add flow in a sheet of its own.
 struct ModelProvidersPage: View {
-    @Environment(AppModel.self) private var app
+    @EnvironmentObject private var app: AppModel
     @State private var model = ModelProvidersModel()
     @State private var deleteTarget: ProviderRow?
     @State private var deleting = false
@@ -363,7 +362,7 @@ private struct APIKeyField: View {
                 .accessibilityLabel(revealed ? "隐藏密钥" : "显示密钥")
             }
         }
-        .onChange(of: text) { _, _ in revealed = false }
+        .onChange(of: text) { _ in revealed = false }
     }
 }
 
@@ -402,7 +401,7 @@ private enum ProviderLayout {
 
 /// A provider's editor pushed from its row (or from the add sheet's list).
 private struct ProviderEditorPage: View {
-    let model: ModelProvidersModel
+    @ObservedObject var model: ModelProvidersModel
     let row: ProviderRow
     let namespace: JSON
     var onAdded: (() -> Void)?
@@ -420,9 +419,9 @@ private struct ProviderEditorPage: View {
 /// failure in the key step retries only that step. Adding splits the same card in two:
 /// the key here, then 下一步 to the models, which saves.
 private struct ProviderEditor: View {
-    @Environment(AppModel.self) private var app
+    @EnvironmentObject private var app: AppModel
     @Environment(\.dismiss) private var dismiss
-    let model: ModelProvidersModel
+    @ObservedObject var model: ModelProvidersModel
     let row: ProviderRow
     let namespace: JSON
     /// In the add flow: closes it after a save, instead of popping this page.
@@ -490,7 +489,7 @@ private struct ProviderEditor: View {
                     Section { NavigationLink("高级") { advancedPage } }.groupedRow()
                 }
             }
-            .onChange(of: attempts) { _, _ in
+            .onChange(of: attempts) { _ in
                 withAnimation { proxy.scrollTo(failedAt == .key ? Self.keyAnchor : Self.failureAnchor, anchor: .center) }
             }
         }
@@ -814,7 +813,7 @@ private enum CatalogFamily { case deepseek, piAi }
 
 /// M-07: the model rows, their reset, add and fetch actions (M-13).
 private struct ModelCatalogSection: View {
-    @Environment(AppModel.self) private var app
+    @EnvironmentObject private var app: AppModel
     let models: [JSON]
     /// nil: a new custom API, which has no inherited catalog to speak of.
     let overridden: Bool?
@@ -1222,9 +1221,9 @@ private struct ModelPickerSheet: View {
 /// comes first, then the models. The list is read once: saving moves a provider out of
 /// what can be added, and the page it pushed must survive a failed key step.
 private struct AddProviderSheet: View {
-    @Environment(AppModel.self) private var app
+    @EnvironmentObject private var app: AppModel
     @Environment(\.dismiss) private var dismiss
-    let model: ModelProvidersModel
+    @ObservedObject var model: ModelProvidersModel
     @State private var addable: [ProviderRow]?
 
     private var piAi: JSON? { app.settings.namespace("llm-pi-ai") }
@@ -1281,8 +1280,8 @@ private struct AddProviderSheet: View {
 /// and key, then the models it lists. The provider ID is derived from the name or the
 /// address; 高级 can name it.
 private struct CustomProviderForm: View {
-    @Environment(AppModel.self) private var app
-    let model: ModelProvidersModel
+    @EnvironmentObject private var app: AppModel
+    @ObservedObject var model: ModelProvidersModel
     let namespace: JSON
     let protocols: [String]
     let reasoningLevels: [String]

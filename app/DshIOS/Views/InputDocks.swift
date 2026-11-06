@@ -5,7 +5,7 @@ import SwiftUI
 /// approval. Everything behind it opens in a sheet. With the keyboard up the timeline
 /// has little room left: only the queue and a waiting approval keep their place.
 struct ComposerStatusBar: View {
-    let model: SessionModel
+    @ObservedObject var model: SessionModel
     var keyboardUp = false
     /// 「等你允许」 / 「等你回答」: an interaction swiped away, still unanswered.
     var waiting: String?
@@ -14,7 +14,7 @@ struct ComposerStatusBar: View {
     var interactionArrived = false
     /// On from opening the sheet until it is gone; the conversation's own sheets wait for it.
     @Binding var sheetUp: Bool
-    @Environment(AppModel.self) private var app
+    @EnvironmentObject private var app: AppModel
     @State private var showSheet = false
     /// The keyboard was up when the sheet opened: it comes back after.
     @State private var refocus = false
@@ -32,8 +32,8 @@ struct ComposerStatusBar: View {
                     .transition(.opacity)
             }
         }
-        .animation(.snappy, value: hasStatus)
-        .animation(.snappy, value: waiting)
+        .animation(.smoothSpring, value: hasStatus)
+        .animation(.smoothSpring, value: waiting)
         // Whether the goal continues on its own: re-read on goal changes, run edges and `goal/activation-changed`.
         .task(id: "\(composer.goal?.id ?? "")-\(composer.goal?.revision ?? 0)-\(model.running)-\(app.revision("goal/activation-changed"))") {
             await composer.refreshGoalActivation()
@@ -44,7 +44,7 @@ struct ComposerStatusBar: View {
         }) {
             ComposerStatusSheet(model: model, waiting: waiting, reveal: reveal)
         }
-        .onChange(of: interactionArrived) { _, arrived in
+        .onChange(of: interactionArrived) { arrived in
             if arrived { showSheet = false }
         }
     }
@@ -200,7 +200,7 @@ private struct TodoProgress {
 /// section comes and goes on its own, so the sheet closes itself once the last one
 /// leaves rather than standing there empty.
 struct ComposerStatusSheet: View {
-    let model: SessionModel
+    @ObservedObject var model: SessionModel
     var waiting: String?
     var reveal: () -> Void = {}
     @Environment(\.dismiss) private var dismiss
@@ -231,7 +231,7 @@ struct ComposerStatusSheet: View {
             // 「插话」 on the last queued row (or 「全部插话」, a delete, the agent picking
             // the queue up) leaves nothing to show: close, so the conversation behind
             // shows where the message went instead of a blank panel.
-            .onChange(of: hasContent) { _, has in
+            .onChange(of: hasContent) { has in
                 if !has { dismiss() }
             }
         }
@@ -297,7 +297,7 @@ struct ComposerStatusSheet: View {
 /// The goal: phase, objective and its actions. Hidden when there is none, it is
 /// complete, or it was just cleared (until the projection catches up).
 private struct GoalSection: View {
-    let composer: ComposerModel
+    @ObservedObject var composer: ComposerModel
     @State private var busy = false
     @State private var actionError: String?
     @State private var editing = false
@@ -401,7 +401,7 @@ private struct GoalSection: View {
 /// row back in the input to edit (text only), a swipe left removes it, a swipe right
 /// or 「插话」 steers it (while running); a long press has them all. One operation at a time.
 private struct QueueSection: View {
-    let model: SessionModel
+    @ObservedObject var model: SessionModel
     let edit: (QueueRow) -> Void
     @State private var busy: String?
 

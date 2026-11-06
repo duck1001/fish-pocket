@@ -14,7 +14,7 @@ struct ConversationView: View {
     /// The workbench opened beside the conversation: a narrow window gives up its sidebar for it.
     var makeRoomForWorkbench: () -> Void = {}
     /// The global automation page (the reminders sheet leads there).
-    @Environment(AppModel.self) private var app
+    @EnvironmentObject private var app: AppModel
     @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var model: SessionModel?
     @State private var context = ComposerContext()
@@ -97,7 +97,7 @@ struct ConversationView: View {
     private func scrollToBottom(_ proxy: ScrollViewProxy, animated: Bool = true) {
         Task { @MainActor in
             if animated {
-                withAnimation(.snappy(duration: 0.2)) { proxy.scrollTo(Self.bottomId, anchor: .bottom) }
+                withAnimation(.smoothSpring(duration: 0.2)) { proxy.scrollTo(Self.bottomId, anchor: .bottom) }
             } else {
                 proxy.scrollTo(Self.bottomId, anchor: .bottom)
             }
@@ -126,19 +126,19 @@ struct ConversationView: View {
                     proxy.scrollTo(id, anchor: .top)
                 }
             }, top: timelineTop))
-            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minY } action: { timelineTop = $0 }
-            .modifier(TimelineAnchor())
+            .measureGeometry(for: CGFloat.self) { $0.frame(in: .global).minY } action: { timelineTop = $0 }
+            .modifier(TimelineAnchor { proxy.scrollTo(Self.bottomId, anchor: .bottom) })
             .modifier(BottomFollow(atBottom: $atBottom) { scrollToBottom(proxy, animated: false) })
             // Any drag on the timeline hides the keyboard (`.interactively` only does when the finger reaches it),
             // even when the timeline is too short to scroll; so does a tap outside the composer.
             .scrollDismissesKeyboard(.immediately)
-            .scrollBounceBehavior(.always)
+            .scrollBounce(.always)
             .simultaneousGesture(TapGesture().onEnded { dismissKeyboard() })
             // The bottom anchor only holds for the first layout; follow the user's own message and the start of a turn.
-            .onChange(of: model.items.last?.id) { _, _ in
+            .onChange(of: model.items.last?.id) { _ in
                 if case .user? = model.items.last { atBottom = true; scrollToBottom(proxy) }
             }
-            .onChange(of: model.running) { _, running in if running, atBottom { scrollToBottom(proxy) } }
+            .onChange(of: model.running) { running in if running, atBottom { scrollToBottom(proxy) } }
             .overlay(alignment: .bottomTrailing) {
                 // Animated here, not on the scroll view: its rows must not animate with the buttons.
                 ZStack {
@@ -158,7 +158,7 @@ struct ConversationView: View {
                         .transition(.opacity.combined(with: .scale(scale: 0.8)))
                     }
                 }
-                .animation(.snappy(duration: 0.18), value: atBottom)
+                .animation(.smoothSpring(duration: 0.18), value: atBottom)
             }
             .sheet(isPresented: $showTurns) {
                 TurnJumpSheet(outline: model.turnOutline) { entry in
@@ -202,13 +202,13 @@ struct ConversationView: View {
             .padding(.bottom, 8)
             .readableWidth()
             .background(Palette.background)
-            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { app.composerHeight = $0 }
+            .measureGeometry(for: CGFloat.self) { $0.size.height } action: { app.composerHeight = $0 }
         }
         .modifier(ComposerDrop(composer: model.composer, enabled: model.subagentReadOnly(parentAvailable: parentAvailable(model)) == nil))
         // Under the toolbar: what is inside an inspector's main view does not reach the navigation bar.
-        .inspector(isPresented: workbenchShown(sizeClass == .regular)) {
-            workbenchPage(model).inspectorColumnWidth(min: 320, ideal: 420, max: 640)
-        }
+        .modifier(WorkbenchInspector(isPresented: workbenchShown(sizeClass == .regular)) {
+            workbenchPage(model)
+        })
         // It names the window in the iPad app switcher. Not drawn while the title is the principal
         // item; with the title moved aside for the workbench it would show as a second one.
         .navigationTitle(titleBesideWorkbench ? "" : app.durableTitle(of: sessionId) ?? "")
@@ -273,22 +273,21 @@ struct ConversationView: View {
         .sheet(isPresented: workbenchShown(sizeClass != .regular)) {
             workbenchPage(model)
                 .presentationDetents([.large])
-                .presentationCornerRadius(36)
+                .sheetCornerRadius(36)
                 // A pull over the terminal is meant for its scrollback; ✕ closes the sheet.
                 .interactiveDismissDisabled(workbenchTab == .terminal)
         }
-        .onChange(of: workbenchOpen) { _, open in if open, sizeClass == .regular { makeRoomForWorkbench() } }
+        .onChange(of: workbenchOpen) { open in if open, sizeClass == .regular { makeRoomForWorkbench() } }
         .focusedSceneValue(\.workbenchCommands, WorkbenchCommands(available: !blank, toggle: toggleWorkbench, open: openWorkbench))
         // The sheet leaves the background live, so the composer keeps its focus and the
         // keyboard would stay over the sheet; an answer comes first.
-        .onChange(of: presentedInteractionId(model)) { _, id in if id != nil { dismissKeyboard() } }
+        .onChange(of: presentedInteractionId(model)) { id in if id != nil { dismissKeyboard() } }
         // An approval or question arriving: the one alert-like tap (as the web's warning tone).
-        .onChange(of: waitingInteraction(model)?.id) { old, new in
+        .onChange(of: waitingInteraction(model)?.id) { new in
             if let new, new != old { Haptics.warning() }
         }
-        .onChange(of: pendingApprovalIds, initial: true) { _, ids in
-            if ids.isEmpty { approvalBatch = [] } else { approvalBatch.formUnion(ids) }
-        }
+        .onAppear { syncApprovalBatch() }
+        .onChange(of: pendingApprovalIds) { _ in syncApprovalBatch() }
         .task(id: app.questionRequests[sessionId]?.map(\.eventId)) { model.syncQuestionWaits() }
         .sheet(item: interactionBinding(model)) { sheet(for: $0, model) }
         .sheet(isPresented: $showNewWorkspace) { NewWorkspaceView() }
@@ -393,8 +392,8 @@ struct ConversationView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .contentShape(Rectangle())
         .onTapGesture { dismissKeyboard() }
-        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { heroHeight = $0 }
-        .animation(.snappy(duration: 0.2), value: showsHeadline)
+        .measureGeometry(for: CGFloat.self) { $0.size.height } action: { heroHeight = $0 }
+        .animation(.smoothSpring(duration: 0.2), value: showsHeadline)
     }
 
     /// Starter prompts; a tap fills the input, to send as is or to change first.
@@ -417,7 +416,6 @@ struct ConversationView: View {
             }
             .padding(.horizontal, 4)
         }
-        .scrollClipDisabled()
     }
 
     private static var suggestions: [String] {
@@ -491,6 +489,12 @@ struct ConversationView: View {
 
     private var pendingApprovalIds: [String] { (app.approvals[sessionId] ?? []).map(\.id) }
 
+    /// Counting up through the batch, first paint included (iOS 16 has no onChange(initial:)).
+    private func syncApprovalBatch() {
+        let ids = pendingApprovalIds
+        if ids.isEmpty { approvalBatch = [] } else { approvalBatch.formUnion(ids) }
+    }
+
     /// Counts up through the batch: an answered approval still counts, so 「1/3」 moves on to 「2/3」.
     private func approvalPosition(_ approval: PendingApproval) -> (current: Int, total: Int)? {
         let pending = pendingApprovalIds
@@ -506,14 +510,24 @@ struct ConversationView: View {
 /// A long timeline opens at its end and grows from there; a short one sits at the top.
 /// iOS 17 has only the one anchor, so a short timeline sits at the bottom there.
 private struct TimelineAnchor: ViewModifier {
+    /// iOS 16 has no scroll anchor: the first layout scrolls to the bottom marker instead.
+    let openAtBottom: () -> Void
+
     func body(content: Content) -> some View {
         if #available(iOS 18.0, *) {
             content
                 .defaultScrollAnchor(.bottom, for: .initialOffset)
                 .defaultScrollAnchor(.bottom, for: .sizeChanges)
                 .defaultScrollAnchor(.top, for: .alignment)
-        } else {
+        } else if #available(iOS 17.0, *) {
             content.defaultScrollAnchor(.bottom)
+        } else {
+            content.onAppear {
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(80))
+                    openAtBottom()
+                }
+            }
         }
     }
 }
@@ -558,7 +572,10 @@ struct TimelineScroll {
 }
 
 extension EnvironmentValues {
-    @Entry var timelineScroll = TimelineScroll()
+    var timelineScroll: TimelineScroll {
+        get { self[TimelineScrollEnvironmentKey.self] }
+        set { self[TimelineScrollEnvironmentKey.self] = newValue }
+    }
 }
 
 /// Actions a reply offers below it, provided by the conversation.
@@ -590,7 +607,10 @@ enum TimelineDetail: Identifiable {
 }
 
 extension EnvironmentValues {
-    @Entry var conversationActions = ConversationActions()
+    var conversationActions: ConversationActions {
+        get { self[ConversationActionsEnvironmentKey.self] }
+        set { self[ConversationActionsEnvironmentKey.self] = newValue }
+    }
 }
 
 extension SessionModel {
@@ -619,7 +639,7 @@ extension SessionModel {
 /// The timeline. Its own view so that projection and session-list updates, which
 /// redraw `ConversationView`, do not re-diff every row.
 private struct TimelineList: View {
-    let model: SessionModel
+    @ObservedObject var model: SessionModel
 
     var body: some View {
         let lastAssistant = model.items.last { if case .assistant = $0 { true } else { false } }?.id
@@ -673,7 +693,7 @@ private struct TimelineList: View {
 /// The turn being worked on, with the streamed attempt appended. Only this view
 /// and `LiveSection` observe `live`, so a chunk does not redraw the rest of the timeline.
 private struct ActiveTurn: View {
-    let model: SessionModel
+    @ObservedObject var model: SessionModel
     let turn: Int
     let blocks: [AssistantBlock]
     let startedAt: Date?
@@ -686,7 +706,7 @@ private struct ActiveTurn: View {
 /// A running session before its turn has a durable message: the streamed attempt,
 /// or just the step line (「正在分析请求」).
 private struct LiveSection: View {
-    let model: SessionModel
+    @ObservedObject var model: SessionModel
 
     var body: some View {
         AssistantTurnView(blocks: model.live, turn: nil, inProgress: true, liveCount: model.live.count, startedAt: nil, endedAt: nil)
@@ -696,7 +716,7 @@ private struct LiveSection: View {
 /// Rows compare by value: rebuilding one with an unchanged item is skipped.
 private struct TimelineRow: View, Equatable {
     let item: TimelineItem
-    let model: SessionModel
+    @ObservedObject var model: SessionModel
     let isLast: Bool
     let inProgress: Bool
     let prompt: String?
@@ -789,7 +809,7 @@ private struct TurnJumpSheet: View {
 /// a spinner meanwhile. Not `onAppear`: this stack is not lazy, so that fires on the first
 /// layout wherever the reader is, and every page loaded would load the next.
 private struct LoadOlderTrigger: View {
-    let model: SessionModel
+    @ObservedObject var model: SessionModel
     @Environment(\.timelineScroll) private var scroll
     @State private var inView = false
 
@@ -797,7 +817,7 @@ private struct LoadOlderTrigger: View {
         ProgressView()
             .controlSize(.small)
             .frame(maxWidth: .infinity, minHeight: 36)
-            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).maxY } action: { inView = $0 > scroll.top }
+            .measureGeometry(for: CGFloat.self) { $0.frame(in: .global).maxY } action: { inView = $0 > scroll.top }
             // Again for each page: one that leaves the top in view needs the next.
             .task(id: "\(inView)-\(model.items.first?.id ?? "")") {
                 guard inView else { return }
@@ -818,7 +838,7 @@ private struct LoadOlderTrigger: View {
 
 /// C-46. The official hint tells the user to send 「继续」; on a phone that is one button.
 private struct MaxTokensNotice: View {
-    let model: SessionModel
+    @ObservedObject var model: SessionModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -841,7 +861,7 @@ private struct MaxTokensNotice: View {
 private struct UserBubble: View {
     let text: String
     let attachments: [Attachment]
-    let model: SessionModel
+    @ObservedObject var model: SessionModel
     @State private var revealed = false
     @Environment(\.conversationActions) private var actions
 
@@ -1101,7 +1121,7 @@ private struct ReasoningView: View {
 struct ReasoningSheet: View {
     let id: String
     let text: String
-    let model: SessionModel
+    @ObservedObject var model: SessionModel
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -1205,17 +1225,17 @@ private struct ApprovalReasonText: View {
         let more = fullHeight > clippedHeight + 1
         Button {
             guard open || more else { return }
-            withAnimation(.snappy) { open.toggle() }
+            withAnimation(.smoothSpring) { open.toggle() }
         } label: {
             VStack(alignment: .leading, spacing: 4) {
                 Text(text)
                     .lineLimit(open ? nil : 2)
-                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { if !open { clippedHeight = $0 } }
+                    .measureGeometry(for: CGFloat.self) { $0.size.height } action: { if !open { clippedHeight = $0 } }
                     .background(alignment: .topLeading) {
                         Text(text)
                             .fixedSize(horizontal: false, vertical: true)
                             .hidden()
-                            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { fullHeight = $0 }
+                            .measureGeometry(for: CGFloat.self) { $0.size.height } action: { fullHeight = $0 }
                     }
                 if open || more {
                     Text(open ? "收起" : "全文").font(.footnote.weight(.semibold)).foregroundStyle(Palette.ink)
@@ -1247,15 +1267,22 @@ private struct CommandBlock: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 14)
-                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height = $0 }
+                    .measureGeometry(for: CGFloat.self) { $0.size.height } action: { height = $0 }
             }
             .frame(height: min(height, limit))
-            .scrollBounceBehavior(.basedOnSize)
-            .scrollIndicatorsFlash(onAppear: true)
+            .scrollBounce(.basedOnSize)
             .background(Palette.field, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             if height > limit {
                 Text("内容较长，滑动查看全部").font(.caption).foregroundStyle(Palette.secondary)
             }
         }
     }
+}
+
+private struct TimelineScrollEnvironmentKey: EnvironmentKey {
+    static let defaultValue: TimelineScroll = TimelineScroll()
+}
+
+private struct ConversationActionsEnvironmentKey: EnvironmentKey {
+    static let defaultValue: ConversationActions = ConversationActions()
 }

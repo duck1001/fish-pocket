@@ -5,8 +5,8 @@ import SwiftUI
 /// model and the session's modes. Everything typing `/` or `@` reaches is here,
 /// for keyboards where those characters sit a page away.
 struct ComposerTray: View {
-    let model: SessionModel
-    let context: ComposerContext
+    @ObservedObject var model: SessionModel
+    @ObservedObject var context: ComposerContext
     let camera: () -> Void
     let photos: () -> Void
     let files: () -> Void

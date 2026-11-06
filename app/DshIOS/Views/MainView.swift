@@ -7,7 +7,7 @@ import SwiftUI
 struct MainView: View {
     enum Sheet: String, Identifiable { case settings, plugins, schedules, signIn, cordis; var id: String { rawValue } }
 
-    @Environment(AppModel.self) private var app
+    @EnvironmentObject private var app: AppModel
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.openURL) private var openURL
@@ -74,7 +74,7 @@ struct MainView: View {
             if sizeClass == .regular { split } else { drawerLayout }
         }
         .tint(Palette.ink)
-        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { windowWidth = $0 }
+        .measureGeometry(for: CGFloat.self) { $0.size.width } action: { windowWidth = $0 }
         .focusedSceneValue(\.windowCommands, windowCommands)
         // A `dsh://` link goes to a window that is already open. Only that: `openWindow` asks
         // through the same door, and a wider match would swallow every new window.
@@ -95,8 +95,8 @@ struct MainView: View {
             supportDialog = true
         }
         // Windows take turns: what is read is the one in front.
-        .onChange(of: scenePhase) { _, phase in if phase == .active { app.currentSession = selection } }
-        .onChange(of: selection) { _, id in
+        .onChange(of: scenePhase) { phase in if phase == .active { app.currentSession = selection } }
+        .onChange(of: selection) { id in
             app.currentSession = id
             if let id {
                 if let owner = app.workspace(of: id) { workspaceId = owner.id }
@@ -105,17 +105,17 @@ struct MainView: View {
             }
         }
         // An archived current session leaves the main view (here, the drawer, a follow push).
-        .onChange(of: app.archived) { _, archived in
+        .onChange(of: app.archived) { archived in
             if let selection, archived.contains(selection) { self.selection = nil }
         }
         // `app.open(session:)`: toasts, the subagent catalog, schedules…
-        .onChange(of: app.openRequest?.token) { _, token in
+        .onChange(of: app.openRequest?.token) { token in
             guard token != nil, scenePhase != .background, let id = app.openRequest?.id else { return }
             app.openRequest = nil
             selection = id
             setDrawer(false)
         }
-        .onChange(of: app.newSessionRequest?.token) { _, token in
+        .onChange(of: app.newSessionRequest?.token) { token in
             guard token != nil, scenePhase != .background, let request = app.newSessionRequest else { return }
             app.newSessionRequest = nil
             sheet = nil
@@ -124,7 +124,7 @@ struct MainView: View {
             newConversation(in: target, agentPreset: request.agentPreset, draft: request.draft)
             setDrawer(false)
         }
-        .onChange(of: app.credentialRequest?.token) { _, token in
+        .onChange(of: app.credentialRequest?.token) { token in
             guard token != nil, scenePhase != .background, let step = app.credentialRequest?.step else { return }
             app.credentialRequest = nil
             Task { await openCredentials(step) }
@@ -181,7 +181,7 @@ struct MainView: View {
                 .transition(.opacity.combined(with: .scale(scale: 0.94)))
             }
         }
-        .animation(.snappy, value: supportDialog)
+        .animation(.smoothSpring, value: supportDialog)
         // A live turn ran out of account balance: offer Platform's top-up page, then re-read balances.
         .alert("当前无可用余额", isPresented: Binding(get: { app.account.quotaPrompt }, set: { app.account.quotaPrompt = $0 })) {
             Button("取消", role: .cancel) {}
@@ -192,7 +192,7 @@ struct MainView: View {
         } message: {
             Text("充值后才能开始新会话，也可稍后在「设置 → 账号与余额」充值。")
         }
-        .onChange(of: app.lastError) { _, error in if error != nil { Haptics.error() } }
+        .onChange(of: app.lastError) { error in if error != nil { Haptics.error() } }
         .alert("出错了", isPresented: Binding(get: { app.lastError != nil }, set: { if !$0 { app.lastError = nil } })) {
             Button("好", role: .cancel) {}
         } message: {
@@ -306,10 +306,10 @@ struct MainView: View {
             .simultaneousGesture(dragGesture(width: width), including: drawerOpen ? .all : .subviews)
             // A list that takes over the touch cancels the drag with no end to settle it
             // (looked at afterwards: a real end settles first).
-            .onChange(of: dragAxis) { _, axis in
+            .onChange(of: dragAxis) { axis in
                 guard axis == nil else { return }
                 Task { @MainActor in
-                    if drag != 0 { withAnimation(.snappy(duration: 0.25)) { drag = 0 } }
+                    if drag != 0 { withAnimation(.smoothSpring(duration: 0.25)) { drag = 0 } }
                 }
             }
         }
@@ -336,7 +336,7 @@ struct MainView: View {
         guard drag != 0 else { return }
         let open = drawerOpen ? predicted > -width / 2 : predicted > width / 2
         if open != drawerOpen { Haptics.select() }
-        withAnimation(.snappy(duration: 0.25)) {
+        withAnimation(.smoothSpring(duration: 0.25)) {
             drawerOpen = open
             drag = 0
         }
@@ -351,7 +351,7 @@ struct MainView: View {
 
     private func setDrawer(_ open: Bool) {
         if open { dismissKeyboard() }
-        withAnimation(.snappy(duration: 0.25)) { drawerOpen = open }
+        withAnimation(.smoothSpring(duration: 0.25)) { drawerOpen = open }
     }
 
     private var drawer: some View {

@@ -285,7 +285,7 @@ private struct FoldedLines<Line, Row: View>: View {
         LazyVStack(alignment: .leading, spacing: 0) {
             ForEach(Array((open ? lines : Array(lines.prefix(cap))).enumerated()), id: \.offset) { _, line in row(line) }
             if lines.count > cap {
-                FoldButton(open: open, hidden: lines.count - cap) { withAnimation(.snappy) { open.toggle() } }
+                FoldButton(open: open, hidden: lines.count - cap) { withAnimation(.smoothSpring) { open.toggle() } }
             }
         }
     }
@@ -676,7 +676,7 @@ struct TodoDiffCard: View {
             if diff.rows.isEmpty && diff.unchanged.isEmpty { Text("任务清单为空").font(.footnote).foregroundStyle(Palette.secondary) }
             ForEach(Array(diff.rows.enumerated()), id: \.offset) { _, row in rowView(row) }
             if !diff.unchanged.isEmpty {
-                Button { withAnimation(.snappy) { showUnchanged.toggle() } } label: {
+                Button { withAnimation(.smoothSpring) { showUnchanged.toggle() } } label: {
                     Text("\(diff.unchanged.count) 项未变化").font(.caption).foregroundStyle(Palette.secondary).hitTarget()
                 }
                 .buttonStyle(.plain)

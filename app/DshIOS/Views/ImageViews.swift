@@ -2,7 +2,10 @@ import SwiftUI
 
 extension EnvironmentValues {
     /// The open conversation, for rows that read its attachments (images) or act on it.
-    @Entry var sessionModel: SessionModel?
+    var sessionModel: SessionModel? {
+        get { self[SessionModelEnvironmentKey.self] }
+        set { self[SessionModelEnvironmentKey.self] = newValue }
+    }
 }
 
 /// Images of one message (C-26): a single image keeps its shape with the long side at
@@ -104,7 +107,7 @@ struct ImageViewer: View {
                         .onChanged { scale = max(1, min(6, lastScale * $0.magnification)) }
                         .onEnded { _ in
                             lastScale = scale
-                            if scale == 1 { withAnimation(.snappy) { offset = .zero }; lastOffset = .zero }
+                            if scale == 1 { withAnimation(.smoothSpring) { offset = .zero }; lastOffset = .zero }
                         }
                         .simultaneously(with: DragGesture()
                             .onChanged { value in
@@ -117,14 +120,14 @@ struct ImageViewer: View {
                             }
                             .onEnded { value in
                                 if scale <= 1 {
-                                    if value.translation.height > 120 { dismiss() } else { withAnimation(.snappy) { offset = .zero } }
+                                    if value.translation.height > 120 { dismiss() } else { withAnimation(.smoothSpring) { offset = .zero } }
                                 } else {
                                     lastOffset = offset
                                 }
                             })
                 )
                 .onTapGesture(count: 2) {
-                    withAnimation(.snappy) {
+                    withAnimation(.smoothSpring) {
                         if scale > 1 { scale = 1; offset = .zero } else { scale = 2.5 }
                     }
                     lastScale = scale
@@ -149,4 +152,8 @@ struct ImageViewer: View {
         }
         .statusBarHidden()
     }
+}
+
+private struct SessionModelEnvironmentKey: EnvironmentKey {
+    static let defaultValue: SessionModel? = nil
 }

@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 import NodeMobile
 
 /// Runs Node (`nodejs-project/main.mjs`, which hosts the DSH engine in a worker)
@@ -27,7 +28,7 @@ final class NodeEngine: ObservableObject {
     @Published private(set) var stalled = false
     /// When `start()` ran, for the counter on that screen.
     @Published private(set) var startedAt: Date?
-    private var started = false
+    @Published private var started = false
 
     /// A cold start is a few seconds, and far less once the engine is warm. What this
     /// brings up says the engine is still being retried and leaves on its own if it

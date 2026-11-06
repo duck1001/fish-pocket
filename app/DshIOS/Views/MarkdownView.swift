@@ -192,8 +192,14 @@ struct FileLinkScope: Equatable {
 }
 
 extension EnvironmentValues {
-    @Entry var fileLinkScope: FileLinkScope?
-    @Entry var fileMentions: [String: String] = [:]
+    var fileLinkScope: FileLinkScope? {
+        get { self[FileLinkScopeEnvironmentKey.self] }
+        set { self[FileLinkScopeEnvironmentKey.self] = newValue }
+    }
+    var fileMentions: [String: String] {
+        get { self[FileMentionsEnvironmentKey.self] }
+        set { self[FileMentionsEnvironmentKey.self] = newValue }
+    }
 }
 
 /// Opens links tapped in replies the way the Web UI's chat does (C-23). Web
@@ -416,4 +422,12 @@ enum MarkdownBlock {
         else if rest.hasPrefix("[x] ") || rest.hasPrefix("[X] ") { checked = true; rest = rest.dropFirst(4) }
         return (Item(text: String(rest), indent: indent, checked: checked, number: number), ordered)
     }
+}
+
+private struct FileLinkScopeEnvironmentKey: EnvironmentKey {
+    static let defaultValue: FileLinkScope? = nil
+}
+
+private struct FileMentionsEnvironmentKey: EnvironmentKey {
+    static let defaultValue: [String: String] = [:]
 }

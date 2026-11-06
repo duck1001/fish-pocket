@@ -44,7 +44,9 @@ struct DshLiveActivity: Widget {
                         if let detail = state.detail {
                             Text(detail).font(.subheadline).foregroundStyle(.secondary).lineLimit(2)
                         }
-                        if let approval = state.approval { ApprovalButtons(approval: approval).padding(.top, 4) }
+                        if let approval = state.approval {
+                            approvalRow(approval).padding(.top, 4)
+                        }
                     }
                     .padding(.horizontal, 4)
                 }
@@ -88,12 +90,13 @@ private struct LockScreenView: View {
             if let detail = state.detail {
                 Text(detail).font(.subheadline).foregroundStyle(.secondary).lineLimit(2)
             }
-            if let approval = state.approval { ApprovalButtons(approval: approval).padding(.top, 4) }
+            if let approval = state.approval { approvalRow(approval).padding(.top, 4) }
         }
         .padding(16)
     }
 }
 
+@available(iOS 17.0, *)
 private struct ApprovalButtons: View {
     let approval: DshActivityAttributes.ContentState.Approval
 
@@ -111,6 +114,18 @@ private struct ApprovalButtons: View {
         .buttonStyle(.borderedProminent)
         .buttonBorderShape(.capsule)
         .font(.subheadline)
+    }
+}
+
+/// Approvals are interactive from iOS 17 (`Button(intent:)`); a 16 lock screen can only
+/// say to open the app, which the whole card already links to.
+@ViewBuilder
+private func approvalRow(_ approval: DshActivityAttributes.ContentState.Approval) -> some View {
+    if #available(iOS 17.0, *) {
+        ApprovalButtons(approval: approval)
+    } else {
+        Text("点按处理审批").font(.caption.weight(.semibold)).foregroundStyle(Tint.waiting)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

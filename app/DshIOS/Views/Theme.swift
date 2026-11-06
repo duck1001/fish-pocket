@@ -135,7 +135,7 @@ struct MonoSwitch: View {
                     .frame(width: 22, height: 22)
                     .padding(3)
             }
-            .animation(.snappy(duration: 0.2), value: isOn)
+            .animation(.smoothSpring(duration: 0.2), value: isOn)
             .contentShape(Capsule())
             .onTapGesture { isOn.toggle(); Haptics.select() }
             .accessibilityElement()

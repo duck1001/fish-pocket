@@ -1,6 +1,6 @@
 import ActivityKit
+import Combine
 import Foundation
-import Observation
 import SwiftUI
 
 /// Mirrors agent work onto one Live Activity while the user is away from it.
@@ -12,6 +12,7 @@ import SwiftUI
 /// Updates are local; the engine keeps running off screen (BackgroundKeeper),
 /// so no push service is involved.
 @MainActor
+@available(iOS 16.1, *)
 final class LiveActivityController {
     typealias State = DshActivityAttributes.ContentState
 
@@ -34,6 +35,7 @@ final class LiveActivityController {
     /// 已完成 still on the lock screen; a return to the app clears it.
     private var finished: Activity<DshActivityAttributes>?
     private var onScreen = true
+    private var cancellable: AnyCancellable?
 
     private init() {}
 
@@ -64,12 +66,13 @@ final class LiveActivityController {
     }
 
     /// Re-derive on every change of what the state reads (sessions, approvals, projections).
+    /// `AppModel` is an ObservableObject now: one "something changed" signal, recomputed here.
     private func observe() {
         guard let app else { return }
-        let next = withObservationTracking { Self.state(of: app) } onChange: { [weak self] in
+        apply(Self.state(of: app))
+        cancellable = app.objectWillChange.sink { [weak self] _ in
             Task { @MainActor in self?.observe() }
         }
-        apply(next)
     }
 
     private func apply(_ next: State?) {

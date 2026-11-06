@@ -2,8 +2,7 @@ import SwiftUI
 
 /// One read of a market index: the query, then pages appended to `entries`.
 @MainActor
-@Observable
-final class PluginMarketModel {
+final class PluginMarketModel: ObservableObject {
     struct Query: Equatable {
         var text = ""
         var category: String?
@@ -14,18 +13,18 @@ final class PluginMarketModel {
 
     enum SourceFailure: Equatable { case invalid, duplicate, unavailable, other(String) }
 
-    private(set) var indexes: [JSON]?
-    private(set) var indexesFailed = false
-    var selected: String?
-    var query = Query()
-    private(set) var result: JSON?
-    private(set) var entries: [JSON] = []
-    private(set) var loading = false
-    private(set) var loadingMore = false
-    private(set) var failure: String?
-    private(set) var saving = false
-    private(set) var sourceFailure: SourceFailure?
-    private var generation = 0
+    @Published private(set) var indexes: [JSON]?
+    @Published private(set) var indexesFailed = false
+    @Published var selected: String?
+    @Published var query = Query()
+    @Published private(set) var result: JSON?
+    @Published private(set) var entries: [JSON] = []
+    @Published private(set) var loading = false
+    @Published private(set) var loadingMore = false
+    @Published private(set) var failure: String?
+    @Published private(set) var saving = false
+    @Published private(set) var sourceFailure: SourceFailure?
+    @Published private var generation = 0
 
     private let pageSize = 50
 
@@ -155,7 +154,7 @@ final class PluginMarketModel {
 
 /// 发现 (MK-01…MK-09): browse an index, search and filter it, and hand an install to P-10.
 struct PluginMarketPage: View {
-    @Environment(AppModel.self) private var app
+    @EnvironmentObject private var app: AppModel
     @State private var model = PluginMarketModel()
     @State private var managing = false
     @State private var search = ""
@@ -420,7 +419,7 @@ struct PluginRoute: Hashable { let name: String }
 
 private struct MarketEntryRow: View {
     let entry: JSON
-    let market: PluginMarketModel
+    @ObservedObject var market: PluginMarketModel
     let install: (MarketChoice) -> Void
     let open: (String) -> Void
 
@@ -456,7 +455,7 @@ private struct MarketEntryRow: View {
 /// MK-07: the full description, facts and every version.
 private struct MarketEntryDetail: View {
     let entry: JSON
-    let market: PluginMarketModel
+    @ObservedObject var market: PluginMarketModel
     let install: (MarketChoice) -> Void
     @State private var route: PluginRoute?
 
@@ -563,7 +562,7 @@ private struct MarketEntryDetail: View {
 
 /// MK-08: 安装「{name}」？ with where it comes from, then the install sheet.
 private struct MarketInstallConfirm: View {
-    @Environment(AppModel.self) private var app
+    @EnvironmentObject private var app: AppModel
     @Environment(\.dismiss) private var dismiss
     let choice: MarketChoice
 
@@ -612,9 +611,9 @@ private struct MarketInstallConfirm: View {
 
 /// MK-03: the index list, written whole with `setIndexes`.
 private struct MarketSourcesSheet: View {
-    @Environment(AppModel.self) private var app
+    @EnvironmentObject private var app: AppModel
     @Environment(\.dismiss) private var dismiss
-    let model: PluginMarketModel
+    @ObservedObject var model: PluginMarketModel
     @State private var draft = ""
 
     private var urls: [String] { (model.indexes ?? []).compactMap { $0["url"].string } }
@@ -644,7 +643,7 @@ private struct MarketSourcesSheet: View {
                         .keyboardType(.URL)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
-                        .onChange(of: draft) { _, _ in model.clearSourceFailure() }
+                        .onChange(of: draft) { _ in model.clearSourceFailure() }
                     if let failure = failureText { Text(failure).font(.caption).foregroundStyle(Palette.removed) }
                     Button("添加") {
                         let url = draft.trimmingCharacters(in: .whitespaces)

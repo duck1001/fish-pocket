@@ -45,7 +45,7 @@ private struct FoldRow<Label: View, Detail: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Button {
-                withAnimation(.snappy) { open.toggle() }
+                withAnimation(.smoothSpring) { open.toggle() }
             } label: {
                 HStack(spacing: 8) {
                     label().frame(maxWidth: .infinity, alignment: .leading)
@@ -76,7 +76,7 @@ struct QuestionReplyBubble: View {
         VStack(alignment: .trailing, spacing: 4) {
             VStack(alignment: .leading, spacing: 0) {
                 Button {
-                    withAnimation(.snappy) { open.toggle() }
+                    withAnimation(.smoothSpring) { open.toggle() }
                 } label: {
                     HStack(spacing: 6) {
                         Text("回答先前等待中的问题").font(.footnote).foregroundStyle(Palette.secondary)

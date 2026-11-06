@@ -6,9 +6,9 @@ import UniformTypeIdentifiers
 /// title there: `SessionTitleMenu`). Catalogs above four models add a search
 /// sheet; providers that failed to load show with a retry.
 struct ModelPicker: View {
-    let model: SessionModel
-    let context: ComposerContext
-    @Environment(AppModel.self) private var app
+    @ObservedObject var model: SessionModel
+    @ObservedObject var context: ComposerContext
+    @EnvironmentObject private var app: AppModel
     @State private var searching = false
 
     var body: some View {
@@ -106,8 +106,8 @@ struct Badge1017: View {
 /// subsequence match within each provider, under the current model's level.
 /// It is a page of the ＋ tray and, wrapped in `ModelSearchSheet`, a sheet of its own.
 struct ModelSearchList: View {
-    let model: SessionModel
-    let context: ComposerContext
+    @ObservedObject var model: SessionModel
+    @ObservedObject var context: ComposerContext
     @State private var query = ""
     @Environment(\.dismiss) private var dismiss
 
@@ -192,8 +192,8 @@ struct ModelSearchList: View {
 
 /// The model list as a sheet.
 struct ModelSearchSheet: View {
-    let model: SessionModel
-    let context: ComposerContext
+    @ObservedObject var model: SessionModel
+    @ObservedObject var context: ComposerContext
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -209,8 +209,8 @@ struct ModelSearchSheet: View {
 /// modes). The main button is send / queue or steer (long press: the other) /
 /// stop. Typing `/` or `@` opens the candidate panel above it.
 struct ComposerView: View {
-    let model: SessionModel
-    let context: ComposerContext
+    @ObservedObject var model: SessionModel
+    @ObservedObject var context: ComposerContext
     /// Text the shell put here (创建你的插件…): added to the draft, not sent.
     var pendingDraft: String?
     var consumeDraft: () -> Void = {}
@@ -220,7 +220,7 @@ struct ComposerView: View {
     var focusChanged: (Bool) -> Void = { _ in }
     /// On from opening one of the composer's sheets until it is gone; the conversation's own sheets wait for it.
     var sheetUp: Binding<Bool> = .constant(false)
-    @Environment(AppModel.self) private var app
+    @EnvironmentObject private var app: AppModel
     @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var photos: [PhotosPickerItem] = []
     @State private var showPhotos = false
@@ -260,7 +260,7 @@ struct ComposerView: View {
             consumeDraft()
         }
         .photosPicker(isPresented: $showPhotos, selection: $photos, maxSelectionCount: max(1, composer.remainingImageSlots), matching: .images)
-        .onChange(of: photos) { _, items in
+        .onChange(of: photos) { items in
             Task { await loadPhotos(items) }
         }
         .fullScreenCover(isPresented: $showCamera) {
@@ -296,21 +296,21 @@ struct ComposerView: View {
         }
         .permissionConfirmation($confirmingPermission, confirm: applyPermission)
         // A popover has no `onDismiss`. A picker presented before its dismissal ends never shows.
-        .onChange(of: showTray) { _, open in
+        .onChange(of: showTray) { open in
             guard !open, sizeClass == .regular else { return }
             Task {
                 try? await Task.sleep(for: .milliseconds(450))
                 sheetClosed()
             }
         }
-        .onChange(of: showTray || showEditor || browsing != nil) { _, open in
+        .onChange(of: showTray || showEditor || browsing != nil) { open in
             if open { sheetUp.wrappedValue = true }
         }
         .onChange(of: composer.focusRequest) { focused = true }
-        .onChange(of: focused) { _, now in focusChanged(now) }
+        .onChange(of: focused) { now in focusChanged(now) }
         // A picker closing gives the keyboard back when it was up before: typed into
         // (`/model`, `/file`) or reached from the tray while it was up.
-        .onChange(of: pickerUp) { _, open in
+        .onChange(of: pickerUp) { open in
             if open {
                 refocus = refocus || focused
             } else {
@@ -369,7 +369,7 @@ struct ComposerView: View {
             .focused($focused)
             .tint(Palette.ink)
             .padding(.trailing, tall ? 30 : 0)
-            .onGeometryChange(for: Bool.self) { $0.size.height > threeLines } action: { tall = $0 }
+            .measureGeometry(for: Bool.self) { $0.size.height > threeLines } action: { tall = $0 }
             .overlay(alignment: .topTrailing) {
                 if tall {
                     Button { refocus = true; showEditor = true } label: {
@@ -711,7 +711,7 @@ struct CameraPicker: UIViewControllerRepresentable {
 
 /// The draft on a page of its own, for text too long for the input.
 private struct DraftEditor: View {
-    @Bindable var composer: ComposerModel
+    @ObservedObject var composer: ComposerModel
     let send: () -> Void
     @FocusState private var focused: Bool
     @Environment(\.dismiss) private var dismiss
@@ -765,13 +765,13 @@ struct FittedSheet: ViewModifier {
 
     func body(content: Content) -> some View {
         ScrollView {
-            content.onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height = $0 }
+            content.measureGeometry(for: CGFloat.self) { $0.size.height } action: { height = $0 }
         }
-        .scrollBounceBehavior(.basedOnSize)
+        .scrollBounce(.basedOnSize)
         .presentationDetents([.height(height)])
-        .presentationCornerRadius(36)
+        .sheetCornerRadius(36)
         .presentationDragIndicator(.hidden)
-        .presentationBackground(Palette.background)
+        .sheetBackground(Palette.background)
     }
 }
 

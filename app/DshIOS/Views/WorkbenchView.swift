@@ -18,13 +18,13 @@ enum WorkbenchTab: String, CaseIterable, Identifiable {
 /// The session's tools in one place: terminal, files, a browser, the changes this
 /// session made, and context / usage. A sheet on a phone, a side column on iPad.
 struct WorkbenchView: View {
-    let model: SessionModel
+    @ObservedObject var model: SessionModel
     /// Kept by the conversation, which can also ask for a tab while this is open.
     @Binding var tab: WorkbenchTab
     /// Kept by the conversation, so the page outlives this view.
     @Binding var browser: BrowserModel?
     let close: () -> Void
-    @Environment(AppModel.self) private var app
+    @EnvironmentObject private var app: AppModel
     /// A page is created on its first visit (the terminal only attaches then) and
     /// stays, so switching tabs leaves it where it was.
     @State private var visited: Set<WorkbenchTab> = []
@@ -51,7 +51,7 @@ struct WorkbenchView: View {
                         }
                     }
                 }
-                .onChange(of: tab) { _, item in withAnimation(.snappy) { proxy.scrollTo(item) } }
+                .onChange(of: tab) { item in withAnimation(.smoothSpring) { proxy.scrollTo(item) } }
                 }
                 Button(action: close) {
                     Image(systemName: "xmark").font(.system(size: 17)).foregroundStyle(Palette.ink)
@@ -72,12 +72,15 @@ struct WorkbenchView: View {
             }
         }
         .background(Palette.background)
-        .onChange(of: tab, initial: true) { _, selected in
-            // A keyboard belongs to the tab that raised it.
-            dismissKeyboard()
-            visited.insert(selected)
-            if selected == .browser, browser == nil { browser = BrowserModel(sessionId: model.sessionId, origin: app.client.origin) }
-        }
+        .onAppear { selectTab(tab) }
+        .onChange(of: tab) { selected in selectTab(selected) }
+    }
+
+    /// A keyboard belongs to the tab that raised it.
+    private func selectTab(_ selected: WorkbenchTab) {
+        dismissKeyboard()
+        visited.insert(selected)
+        if selected == .browser, browser == nil { browser = BrowserModel(sessionId: model.sessionId, origin: app.client.origin) }
     }
 
     @ViewBuilder
@@ -95,7 +98,7 @@ struct WorkbenchView: View {
 
 private struct WorkbenchTerminal: View {
     let sessionId: String
-    @Environment(AppModel.self) private var app
+    @EnvironmentObject private var app: AppModel
     @State private var connection: TerminalConnection?
     @State private var terminals: [(id: String, title: String, exited: Bool)] = []
     @State private var error: String?
@@ -151,7 +154,7 @@ private struct WorkbenchTerminal: View {
         .task { await reload() }
         .task(id: app.revision("settings/document-updated")) { await loadFontSize() }
         // The attachment does not survive a dropped connection; the new one brings a fresh screen.
-        .onChange(of: app.generation) { _, _ in if connection?.phase == .disconnected { connection?.connect() } }
+        .onChange(of: app.generation) { _ in if connection?.phase == .disconnected { connection?.connect() } }
         .onDisappear { connection?.close() }
         .alert("终端名称", isPresented: $renaming) {
             TextField("终端名称", text: $newTitle)
@@ -364,7 +367,7 @@ private struct TerminalKeyBar<Menu: View>: View {
 // MARK: Files
 
 private struct WorkbenchFiles: View {
-    let model: SessionModel
+    @ObservedObject var model: SessionModel
 
     var body: some View {
         NavigationStack {
@@ -385,7 +388,7 @@ private struct WorkbenchFiles: View {
 /// S-57: the files this session edited; a row pushes that file's diff, and the
 /// whole file is one step further. Built from the tool calls in the timeline.
 private struct WorkbenchChanges: View {
-    let model: SessionModel
+    @ObservedObject var model: SessionModel
 
     var body: some View {
         let changes = FileChange.collect(model.items.allBlocks, root: model.workingDirectory)
@@ -456,7 +459,7 @@ private struct ChangeCounts: View {
 /// One file's diff, full width. The bottom bar walks the session's other changed
 /// files in place, so going through them does not stack up pages.
 private struct FileDiffPage: View {
-    let model: SessionModel
+    @ObservedObject var model: SessionModel
     @State var path: String
     @AppStorage("dsh.diff.wrap") private var wrap = true
 
@@ -543,7 +546,7 @@ struct DiffLinesView: View {
                         .frame(minWidth: width, alignment: .leading)
                         .padding(.vertical, 14)
                 }
-                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
+                .measureGeometry(for: CGFloat.self) { $0.size.width } action: { width = $0 }
             }
         }
         .font(.caption.monospaced())
@@ -570,7 +573,7 @@ struct DiffLinesView: View {
 // MARK: Context
 
 private struct WorkbenchContext: View {
-    let model: SessionModel
+    @ObservedObject var model: SessionModel
     let close: () -> Void
 
     var body: some View {

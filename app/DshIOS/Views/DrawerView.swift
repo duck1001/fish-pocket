@@ -23,7 +23,7 @@ struct DrawerView: View {
 
     private enum Route: Hashable { case archived }
 
-    @Environment(AppModel.self) private var app
+    @EnvironmentObject private var app: AppModel
     @EnvironmentObject private var engine: NodeEngine
     let selection: String?
     /// Where a new conversation from the top button goes: the current session's workspace.
@@ -271,7 +271,7 @@ struct DrawerView: View {
         let title = group.workspace?.displayTitle ?? String(localized: "未分组")
         return Button {
             Haptics.select()
-            withAnimation(.snappy(duration: 0.2)) { setExpanded(group, !open) }
+            withAnimation(.smoothSpring(duration: 0.2)) { setExpanded(group, !open) }
         } label: {
             HStack(spacing: 10) {
                 Image(systemName: open ? "folder" : "folder.fill")
@@ -311,7 +311,7 @@ struct DrawerView: View {
     private func moreRow(_ group: SessionGroup, shown: Int) -> some View {
         let hidden = group.rows.count - shown
         return Button {
-            withAnimation(.snappy(duration: 0.2)) {
+            withAnimation(.smoothSpring(duration: 0.2)) {
                 if hidden > 0 {
                     watermark[group.id] = hidden <= Self.baseRows ? group.rows.count : shown + Self.baseRows
                 } else {
@@ -681,7 +681,7 @@ private extension View {
     }
 
     func reportsFrame(_ id: String, to frames: DrawerRowFrames) -> some View {
-        onGeometryChange(for: CGRect.self) { $0.frame(in: .named(DrawerRowFrames.space)) } action: { frames.set($0, of: id) }
+        measureGeometry(for: CGRect.self) { $0.frame(in: .named(DrawerRowFrames.space)) } action: { frames.set($0, of: id) }
             .onAppear { frames.setShown(id, true) }
             .onDisappear { frames.setShown(id, false) }
     }
