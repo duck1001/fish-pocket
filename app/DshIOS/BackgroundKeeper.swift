@@ -174,6 +174,7 @@ final class BackgroundKeeper {
         }
         tick()
     }
+#endif
 
     /// The end of agent work is unknown, so the bar keeps moving without filling:
     /// n events show as n / (n + 10).
@@ -185,7 +186,6 @@ final class BackgroundKeeper {
         task.updateTitle(String(localized: "DSH 任务进行中"), subtitle: subtitle)
 #endif
     }
-#endif
 
     private func finishContinued() {
 #if DSH_IOS26_SDK
