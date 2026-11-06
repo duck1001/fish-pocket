@@ -61,8 +61,9 @@ struct ModelPicker: View {
     @ViewBuilder
     private func modelItem(_ choice: ModelChoice) -> some View {
         let title = Self.title(choice)
-        if choice.reasoningEfforts.isEmpty {
-            Button { Haptics.select(); Task { await model.selectModel(choice, effort: nil) } } label: {
+        if choice.reasoningEfforts.count <= 1 {
+            // One level (「强制深度思考」) needs no menu: picking the model is the choice.
+            Button { Haptics.select(); Task { await model.selectModel(choice, effort: choice.reasoningEfforts.first?.id) } } label: {
                 if isCurrent(choice) { Label(title, systemImage: "checkmark") } else { Text(title) }
             }
         } else {

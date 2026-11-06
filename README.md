@@ -1,3 +1,7 @@
+> **上游 / Upstream:** [imsai-sh/fish-pocket](https://github.com/imsai-sh/fish-pocket) · MIT · 本仓库是它的 fork。
+> 本 fork 的改动：模型页「自定义 API」增加「强制开启深度思考」开关（给模型只声明 `high` 一个思考等级）。
+> 代码与设计版权归原作者所有。
+
 <p align="center">
   <img src="docs/assets/mascot.png" width="220" alt="Fish Pocket 吉祥物：眨眼笑的鲸鱼娘大肥鱼">
 </p>

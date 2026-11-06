@@ -1292,6 +1292,9 @@ private struct CustomProviderForm: View {
     @State private var displayName = ""
     @State private var baseURL = ""
     @State private var api = ""
+    /// 「强制深度思考」: declare one high thinking level per model, so picking the model
+    /// always sends the reasoning parameter.
+    @State private var forceThinking = true
     @State private var keyDraft = ""
     @State private var models: [JSON] = []
     @State private var busy = false
@@ -1431,6 +1434,12 @@ private struct CustomProviderForm: View {
             if !models.isEmpty, let modelProblem {
                 Section { Text(modelProblem).font(.footnote).foregroundStyle(Palette.waiting) }.groupedRow()
             }
+            Section {
+                Toggle("强制开启深度思考", isOn: $forceThinking).disabled(locked)
+            } footer: {
+                Text("给每个模型只声明 high 一个思考等级，选中它时始终按 high 发送推理参数。仅对支持 reasoning_effort 的 OpenAI 兼容接口有效；接口不认这个参数会直接报错，可以先关掉再测。")
+            }
+            .groupedRow()
         }
         .tint(Palette.ink)
         .scrollContentBackground(.hidden)
@@ -1442,6 +1451,12 @@ private struct CustomProviderForm: View {
         .saveToolbar(canSave: ready && !busy && app.settings.writable, saving: busy) { Task { await create() } }
     }
 
+    /// 「强制深度思考」: every model declares exactly one thinking level, so a session that
+    /// selects it sends the reasoning parameter without the user choosing a level.
+    private static func deepThinking(_ models: [JSON]) -> [JSON] {
+        models.map { $0.setting(["reasoningEfforts"], .object(["high": .string("high")])) }
+    }
+
     private func create() async {
         busy = true
         failure = nil
@@ -1449,7 +1464,7 @@ private struct CustomProviderForm: View {
         let target = route
         let keyRef = deriveKeyRef(target)
         if committedRoute == nil {
-            var profile: [String: JSON] = ["api": .string(api), "baseURL": .string(normalizedURL), "models": .array(models)]
+            var profile: [String: JSON] = ["api": .string(api), "baseURL": .string(normalizedURL), "models": .array(forceThinking ? Self.deepThinking(models) : models)]
             if !displayName.isEmpty { profile["displayName"] = .string(displayName) }
             if !keyValue.isEmpty { profile["apiKeyEnv"] = .string(keyRef) }
             do {
