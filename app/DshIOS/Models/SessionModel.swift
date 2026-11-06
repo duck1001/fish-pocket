@@ -8,6 +8,8 @@ import UIKit
 final class SessionModel: ObservableObject {
     let sessionId: String
     private let app: AppModel
+    /// 官方账号是否已登录：老会话要不要改用中转站，看这个。
+    var accountSignedIn: Bool { app.account.signedIn }
 
     @Published private(set) var items: [TimelineItem] = []
     @Published private(set) var live: [AssistantBlock] = []

@@ -43,6 +43,7 @@ final class ComposerContext: ObservableObject {
         async let permissions: Void = loadPermissions(model)
         async let settings: Void = loadSettings(model)
         _ = await (commands, catalog, permissions, settings)
+        await adoptConfiguredProvider(model)
     }
 
     func loadCommands(_ model: SessionModel) async {
@@ -125,6 +126,27 @@ final class ComposerContext: ObservableObject {
         guard let fallback = catalogDefault, official.contains(fallback.provider) else { return catalogDefault }
         guard let custom = catalog.first(where: { !official.contains($0.id) && !$0.models.isEmpty }) else { return catalogDefault }
         return (custom.models[0].provider, custom.models[0].model, nil)
+    }
+
+    /// 老会话记着官方模型、而官方没登录时，改用已配置的中转站/自定义 API。
+    /// 用户手动选过别的模型就不算「官方」，这里不会动。
+    func adoptConfiguredProvider(_ model: SessionModel) async {
+        guard model.subagentAddress == nil, !model.accountSignedIn, let recorded = model.modelSelection else { return }
+        let official = ["deepseek-account", "deepseek-official"]
+        guard official.contains(recorded.provider), !catalogFailed(recorded.provider) else { return }
+        guard let custom = catalog.first(where: { !official.contains($0.id) && !$0.models.isEmpty }),
+              let next = custom.models.first else { return }
+        guard next.provider != recorded.provider || next.model != recorded.model else { return }
+        do {
+            try await model.applyModel(provider: next.provider, model: next.model, effort: nil)
+            model.toast(String(localized: "已切换到 \(custom.name)"))
+        } catch {
+            // 下一轮会再试；失败不打断用户。
+        }
+    }
+
+    private func catalogFailed(_ id: String) -> Bool {
+        catalogFailures.contains { $0.id == id }
     }
 
     private func choice(_ provider: String, _ model: String) -> ModelChoice? {
