@@ -58,7 +58,7 @@ struct SettingsView: View {
                     }
                     NavigationLink { ModelProvidersPage() } label: { valueRow("模型", defaultModel ?? "") }
                     NavigationLink { SoulView() } label: { valueRow("灵魂", soulSummary) }
-                    if mirror.serves("permission") { permissionPicker }
+                    if mirror.serves("permission") { operationPromptPicker }
                     if let theme = mirror.namespace("ui-theme") {
                         Picker("外观", selection: Binding(get: { theme["value"]["preference"].string ?? "system" }, set: { value in
                             Task { await write("ui-theme", ["preference"], .string(value)) }
@@ -164,6 +164,37 @@ struct SettingsView: View {
             Text(title).foregroundStyle(Palette.ink)
             Spacer()
             Text(value).foregroundStyle(Palette.secondary).lineLimit(1)
+        }
+    }
+
+    /// 操作提示 / 权限：三档，落到引擎的 permission.defaultPreset。
+    /// 高 = 只读（每个改动都要你放行）、中 = 工作区内自动、关 = 完全权限。
+    private var operationPromptPicker: some View {
+        let current = mirror.namespace("permission")?["value"]["defaultPreset"].string ?? catalogDefaultPermission
+        return Picker("操作提示", selection: Binding(get: { Self.promptLevel(current) }, set: { level in
+            let preset = Self.preset(for: level)
+            if preset == "danger-full-access" { confirmingFullAccess = true }
+            else { Task { await write("permission", ["defaultPreset"], .string(preset)) } }
+        })) {
+            Text("高（只读，改动都要你确认）").tag("high")
+            Text("中（工作区内自动，越界确认）").tag("medium")
+            Text("关（完全权限，不再打断）").tag("off")
+        }
+    }
+
+    private static func promptLevel(_ preset: String) -> String {
+        switch preset {
+        case "read-only": "high"
+        case "danger-full-access", "full-access": "off"
+        default: "medium"
+        }
+    }
+
+    private static func preset(for level: String) -> String {
+        switch level {
+        case "high": "read-only"
+        case "off": "danger-full-access"
+        default: "workspace-write"
         }
     }
 
