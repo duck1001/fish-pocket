@@ -20,7 +20,7 @@ jobs:
   ipa:
     # macos-15 = Xcode 16: the iOS 26 continued-processing code is compiled out
     # (`#if DSH_IOS26_SDK`), which the 26-only runner used to provide.
-    runs-on: macos-15
+    runs-on: macos-14
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v5

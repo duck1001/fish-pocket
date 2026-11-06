@@ -6,12 +6,7 @@
 name: iOS build
 
 on:
-  pull_request:
-    branches: [main]
-    paths-ignore: ["docs/**", "**/*.md"]
-  push:
-    branches: [main]
-    paths-ignore: ["docs/**", "**/*.md"]
+  # 出包优先：模拟器构建只在手动点的时候跑，免得和 IPA 抢 macOS 机位。
   workflow_dispatch:
 
 permissions:
