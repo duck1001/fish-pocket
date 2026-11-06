@@ -131,6 +131,7 @@ final class BackgroundKeeper {
     }
 
     private func startContinued() {
+#if DSH_IOS26_SDK
         guard #available(iOS 26.0, *), continuedEnabled, !running.isEmpty, continued == nil, submitted == nil, !halted else { return }
         // Info.plist permits `<prefix>.*`; handlers are registered per concrete
         // identifier (registering the wildcard itself is not supported), and
@@ -149,8 +150,10 @@ final class BackgroundKeeper {
             halted = true
             print("[keepalive] continued task not submitted: \(error)")
         }
+#endif
     }
 
+#if DSH_IOS26_SDK
     @available(iOS 26.0, *)
     private func run(_ task: BGTask) {
         guard let task = task as? BGContinuedProcessingTask else { return }
@@ -175,13 +178,17 @@ final class BackgroundKeeper {
     /// The end of agent work is unknown, so the bar keeps moving without filling:
     /// n events show as n / (n + 10).
     private func tick() {
+#if DSH_IOS26_SDK
         guard #available(iOS 26.0, *), let task = continued as? BGContinuedProcessingTask else { return }
         task.progress.completedUnitCount += 1
         task.progress.totalUnitCount = task.progress.completedUnitCount + 10
         task.updateTitle(String(localized: "DSH 任务进行中"), subtitle: subtitle)
+#endif
     }
+#endif
 
     private func finishContinued() {
+#if DSH_IOS26_SDK
         guard #available(iOS 26.0, *) else { return }
         halted = false
         if let identifier = submitted {
@@ -192,6 +199,7 @@ final class BackgroundKeeper {
         continued = nil
         task.progress.completedUnitCount = task.progress.totalUnitCount
         task.setTaskCompleted(success: true)
+#endif
     }
 }
 
