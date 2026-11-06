@@ -87,11 +87,6 @@ struct SettingsView: View {
                         if on { keepAlive = true } else { confirmingKeepAliveOff = true }
                     }))
                     .toggleStyle(.mono)
-                    // The system's continued-processing task exists from iOS 26 only.
-                    if #available(iOS 26.0, *) {
-                        Toggle("任务续跑", isOn: $continuedProcessing)
-                            .toggleStyle(.mono)
-                    }
                 } header: {
                     Text("后台运行")
                 } footer: {
@@ -171,7 +166,7 @@ struct SettingsView: View {
     /// 高 = 只读（每个改动都要你放行）、中 = 工作区内自动、关 = 完全权限。
     private var operationPromptPicker: some View {
         let current = mirror.namespace("permission")?["value"]["defaultPreset"].string ?? catalogDefaultPermission
-        return Picker("操作提示", selection: Binding(get: { Self.promptLevel(current) }, set: { level in
+        return Picker("操作提示（仅新会话）", selection: Binding(get: { Self.promptLevel(current) }, set: { level in
             let preset = Self.preset(for: level)
             if preset == "danger-full-access" { confirmingFullAccess = true }
             else { Task { await write("permission", ["defaultPreset"], .string(preset)) } }

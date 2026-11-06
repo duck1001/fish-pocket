@@ -673,40 +673,31 @@ final class ComposerModel: ObservableObject {
     var remainingImageSlots: Int { max(0, imageLimits.maxImagesPerMessage - attachments.filter(\.isImage).count) }
 
     /// Files from the Files app: images join as images, everything else uploads now.
-    /// Read through NSFileCoordinator, which is what downloads an item that lives in iCloud
-    /// and serialises access with other pickers — without it a cloud file reads as empty.
+    /// 先整份拷进沙盒再读，iCloud 的占位文件由 `PickedFile` 里的协调读取负责下载。
     func addFiles(_ urls: [URL]) {
         var refusal: String?
         for url in urls {
-            let scoped = url.startAccessingSecurityScopedResource()
-            defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-
-            var coordinatorError: NSError?
-            var readError: Error?
-            var data: Data?
-            NSFileCoordinator().coordinate(readingItemAt: url, options: [], error: &coordinatorError) { readURL in
-                do { data = try Data(contentsOf: readURL) } catch { readError = error }
-            }
-            guard let data else {
-                refusal = coordinatorError?.localizedDescription ?? readError?.localizedDescription ?? String(localized: "读取文件失败")
-                continue
-            }
-            if let type = UTType(filenameExtension: url.pathExtension), type.conforms(to: .image), let image = UIImage(data: data) {
-                if let reason = addImages([image], names: [url.lastPathComponent]) { refusal = reason }
-                continue
-            }
-            // A private copy: the security-scoped URL may not outlive the picker, and retries reread it.
-            let folder = FileManager.default.temporaryDirectory.appendingPathComponent("uploads/\(UUID().uuidString)", isDirectory: true)
-            let copy = folder.appendingPathComponent(url.lastPathComponent)
+            RunLog.note("选择文件 \(url.lastPathComponent)")
+            let staged: URL
             do {
-                try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-                try data.write(to: copy)
+                staged = try PickedFile.stage(url)
             } catch {
+                RunLog.note("拷贝到沙盒失败 \(url.lastPathComponent)", error: error)
                 refusal = error.localizedDescription
                 continue
             }
-            let attachment = DraftAttachment(name: url.lastPathComponent, bytes: data.count, kind: .file(url: copy), upload: .uploading(loaded: 0, total: Int64(data.count)))
+            guard let data = try? Data(contentsOf: staged) else {
+                RunLog.note("读取沙盒副本失败 \(staged.lastPathComponent)")
+                refusal = String(localized: "读取文件失败")
+                continue
+            }
+            if let type = UTType(filenameExtension: staged.pathExtension), type.conforms(to: .image), let image = UIImage(data: data) {
+                if let reason = addImages([image], names: [staged.lastPathComponent]) { refusal = reason }
+                continue
+            }
+            let attachment = DraftAttachment(name: staged.lastPathComponent, bytes: data.count, kind: .file(url: staged), upload: .uploading(loaded: 0, total: Int64(data.count)))
             attachments.append(attachment)
+            RunLog.note("加入附件 \(staged.lastPathComponent) \(data.count) 字节")
             enqueueUpload(attachment.id)
         }
         if let refusal { app.showToast(refusal) }
@@ -741,6 +732,7 @@ final class ComposerModel: ObservableObject {
             activeUploads += 1
             uploadTasks[id] = Task {
                 let outcome: DraftAttachment.Upload
+                RunLog.note("开始上传 \(attachment.name)")
                 do {
                     let receipt = try await upload(url, name: attachment.name) { [weak self] sent, total in
                         Task { @MainActor in
@@ -751,6 +743,7 @@ final class ComposerModel: ObservableObject {
                     }
                     outcome = .ready(receiptId: receipt)
                 } catch {
+                    RunLog.note("上传失败 \(attachment.name)", error: error)
                     outcome = .failed(error.localizedDescription)
                 }
                 if !Task.isCancelled, let index = attachments.firstIndex(where: { $0.id == id }) {

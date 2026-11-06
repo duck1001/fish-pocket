@@ -366,11 +366,12 @@ struct ComposerView: View {
             }
             // 模型在左（点开就是模型 + 思考强度），上下文在右：同一行，贴着输入框。
             HStack(spacing: 8) {
-                ModelPicker(model: model, context: context, compact: true)
-                Spacer(minLength: 0)
                 ContextMeter(model: model, composer: composer, rate: model.rate)
+                Spacer(minLength: 0)
+                ModelPicker(model: model, context: context, compact: true)
             }
             .padding(.horizontal, 12)
+            .padding(.top, 6)
             HStack(alignment: .bottom, spacing: 6) {
                 plusButton
                 input

@@ -54,6 +54,9 @@ struct RunLogView: View {
         lines.append("设置可写：\(app.settings.writable)")
         if let error = app.lastError, !error.isEmpty { lines.append("最近错误：\(error)") }
         lines.append("")
+        lines.append("---- App 日志 ----")
+        lines.append(RunLog.isEmpty ? "（没有记录）" : RunLog.text)
+        lines.append("")
         lines.append("---- 引擎日志（末尾 400 行）----")
         lines.append(tail(of: engine.logFile, lines: 400))
         return lines.joined(separator: "\n")

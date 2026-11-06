@@ -162,22 +162,21 @@ struct SoulView: View {
         return types
     }
 
-    /// Files lives in iCloud too: coordinate the read so an undownloaded item comes down.
+    /// 选择器给的是 security-scoped URL：先整份拷进沙盒，再按 UTF-8 / UTF-16 / Latin-1 依次试。
     private func read(_ url: URL) {
-        let scoped = url.startAccessingSecurityScopedResource()
-        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-        var coordinatorError: NSError?
-        var readError: Error?
-        var text: String?
-        NSFileCoordinator().coordinate(readingItemAt: url, options: [], error: &coordinatorError) { readURL in
-            do { text = try String(contentsOf: readURL, encoding: .utf8) } catch { readError = error }
-        }
-        if let text, !text.isEmpty {
+        RunLog.note("导入人格文件 \(url.lastPathComponent)")
+        do {
+            let staged = try PickedFile.stage(url)
+            guard let text = PickedFile.text(at: staged) else {
+                RunLog.note("人格文件解码失败 \(url.lastPathComponent)")
+                failure = String(localized: "读不了这个文件：请另存为 UTF-8 的 md / txt。")
+                return
+            }
             persona = text
-        } else {
-            failure = coordinatorError?.localizedDescription
-                ?? readError?.localizedDescription
-                ?? String(localized: "读不了这个文件：只支持 UTF-8 的 md / txt。")
+            RunLog.note("人格文件导入成功，\(text.count) 字")
+        } catch {
+            RunLog.note("人格文件读取失败", error: error)
+            failure = error.localizedDescription
         }
     }
 
