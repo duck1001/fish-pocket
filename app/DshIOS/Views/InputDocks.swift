@@ -31,7 +31,6 @@ struct ComposerStatusBar: View {
                     .padding(.bottom, 8)
                     .transition(.opacity)
             }
-            ContextMeter(model: model, composer: composer, rate: model.rate)
         }
         .animation(.smoothSpring, value: hasStatus)
         .animation(.smoothSpring, value: waiting)
@@ -511,7 +510,7 @@ private struct QueueSection: View {
 
 /// C-122, above the input: how full the context is and how fast the turn is writing.
 /// `contextPressure` comes from the engine; the rate is an estimate from streamed characters.
-private struct ContextMeter: View {
+struct ContextMeter: View {
     @ObservedObject var model: SessionModel
     @ObservedObject var composer: ComposerModel
     @ObservedObject var rate: LiveRate
@@ -542,8 +541,6 @@ private struct ContextMeter: View {
             }
             .font(.caption2.monospacedDigit())
             .foregroundStyle(Palette.faint)
-            .padding(.horizontal, 18)
-            .padding(.bottom, 4)
             .accessibilityElement(children: .combine)
             .accessibilityLabel("上下文 \(occupancy?.percent ?? 0)%")
         }

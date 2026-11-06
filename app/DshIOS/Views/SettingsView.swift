@@ -114,20 +114,9 @@ struct SettingsView: View {
                 .groupedRow()
 
                 Section {
-                    linkRow("给个 Star", "GitHub", Self.repositoryURL)
-                        .environment(\.openURL, OpenURLAction { _ in SupportPrompt.settle(); return .systemAction })
-                    ShareLink(item: AppLinks.shareText) {
-                        HStack {
-                            Text("分享给朋友").foregroundStyle(Palette.ink)
-                            Spacer()
-                            Image(systemName: "square.and.arrow.up").font(.caption).foregroundStyle(Palette.faint)
-                        }
-                    }
-                    linkRow("开源仓库", UpdateChecker.repository, Self.repositoryURL)
-                    linkRow("问题反馈", "GitHub Issues", Self.issuesURL)
-                    linkRow("作者", "sai · imsai.cc", Self.authorURL)
+                    NavigationLink("运行日志") { RunLogView() }
                 } footer: {
-                    Text("觉得好用的话，去 GitHub 仓库页点一下 Star ⭐️，这是对项目最大的支持。")
+                    Text("设备、引擎状态和最近的问题都在这里，可以整份分享出来。")
                 }
                 .groupedRow()
             }

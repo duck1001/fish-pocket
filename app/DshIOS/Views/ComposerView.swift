@@ -8,6 +8,8 @@ import UniformTypeIdentifiers
 struct ModelPicker: View {
     @ObservedObject var model: SessionModel
     @ObservedObject var context: ComposerContext
+    /// One line, for the row above the input (the top bar uses the full one).
+    var compact = false
     @EnvironmentObject private var app: AppModel
     @State private var searching = false
 
@@ -35,20 +37,35 @@ struct ModelPicker: View {
         } label: {
             // The full name the catalog publishes (`DeepSeek-V4.1-Flash`), with the
             // reasoning level under it: the bar says exactly what the next turn runs on.
-            VStack(spacing: 0) {
-                HStack(spacing: 6) {
-                    Text(context.modelName(model)).font(.subheadline.weight(.semibold)).foregroundStyle(Palette.ink)
-                        .lineLimit(1).minimumScaleFactor(0.85).truncationMode(.middle)
-                    Image(systemName: "chevron.down").font(.caption2.weight(.bold)).foregroundStyle(Palette.secondary)
+            if compact {
+                HStack(spacing: 4) {
+                    Text(context.modelName(model)).font(.caption.weight(.medium)).foregroundStyle(Palette.ink)
+                        .lineLimit(1).truncationMode(.middle)
+                    if let effort = context.effortName(model) {
+                        Text(effort).font(.caption2).foregroundStyle(Palette.secondary).lineLimit(1)
+                    }
+                    Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold)).foregroundStyle(Palette.secondary)
                 }
-                if let effort = context.effortName(model) {
-                    Text(effort).font(.caption2).foregroundStyle(Palette.secondary).lineLimit(1)
+                .padding(.horizontal, 8)
+                .frame(maxWidth: 210, minHeight: 26, alignment: .leading)
+                .background(Palette.field, in: Capsule())
+                .contentShape(Rectangle())
+            } else {
+                VStack(spacing: 0) {
+                    HStack(spacing: 6) {
+                        Text(context.modelName(model)).font(.subheadline.weight(.semibold)).foregroundStyle(Palette.ink)
+                            .lineLimit(1).minimumScaleFactor(0.85).truncationMode(.middle)
+                        Image(systemName: "chevron.down").font(.caption2.weight(.bold)).foregroundStyle(Palette.secondary)
+                    }
+                    if let effort = context.effortName(model) {
+                        Text(effort).font(.caption2).foregroundStyle(Palette.secondary).lineLimit(1)
+                    }
                 }
+                .padding(.horizontal, 12)
+                .frame(maxWidth: 260)
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
             }
-            .padding(.horizontal, 12)
-            .frame(maxWidth: 260)
-            .frame(minHeight: 44)
-            .contentShape(Rectangle())
         }
         .accessibilityLabel(context.effortName(model).map { Text("模型：\(context.modelName(model))，推理档位 \($0)") } ?? Text("模型：\(context.modelName(model))"))
         .sheet(isPresented: $searching) { ModelSearchSheet(model: model, context: context) }
@@ -347,6 +364,13 @@ struct ComposerView: View {
                     .padding(.horizontal, 17)
                     .padding(.top, 4)
             }
+            // 模型在左（点开就是模型 + 思考强度），上下文在右：同一行，贴着输入框。
+            HStack(spacing: 8) {
+                ModelPicker(model: model, context: context, compact: true)
+                Spacer(minLength: 0)
+                ContextMeter(model: model, composer: composer, rate: model.rate)
+            }
+            .padding(.horizontal, 12)
             HStack(alignment: .bottom, spacing: 6) {
                 plusButton
                 input
@@ -452,8 +476,10 @@ struct ComposerView: View {
 
     /// Leave the tray for a picker, which can only present once the tray is gone.
     private func leaveTray(then next: @escaping () -> Void) {
-        afterSheet = next
+        // The tray sheet is still on screen for a moment after `showTray = false`; a
+        // document picker asked for in that same runloop never appears at all.
         showTray = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { next() }
     }
 
     /// While the agent runs, stop stays one tap away: alone with an empty draft (the main

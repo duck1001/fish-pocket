@@ -240,7 +240,7 @@ struct ConversationView: View {
                 }
                 ToolbarItem(placement: titlePlacement) { SubagentSwitcher(sessionId: sessionId) }
             } else if blank || (!model.loaded && app.sessions[sessionId]?.blank == true) {
-                ToolbarItem(placement: .principal) { ModelPicker(model: model, context: context) }
+                ToolbarItem(placement: .principal) { Color.clear.frame(width: 1, height: 1) }
             } else {
                 ToolbarItem(placement: titlePlacement) {
                     SessionTitleMenu(

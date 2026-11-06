@@ -14,14 +14,8 @@ enum SupportPrompt {
     private static let lastAsk = 3
     private static let cooldown: TimeInterval = 3 * 24 * 60 * 60
 
-    /// Counts a turn that finished well; true when an ask is due.
-    static func noteCompletedTurn() -> Bool {
-        let defaults = UserDefaults.standard
-        guard !defaults.bool(forKey: settledKey) else { return false }
-        let turns = defaults.integer(forKey: turnsKey) + 1
-        defaults.set(turns, forKey: turnsKey)
-        return isDue
-    }
+    /// The ask is gone (设置里的 Star 区块和那个弹窗都删了): never due.
+    static func noteCompletedTurn() -> Bool { false }
 
     /// The ask to make now: each is spent here, whatever becomes of it.
     static func take() -> Bool {

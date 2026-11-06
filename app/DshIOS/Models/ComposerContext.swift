@@ -115,7 +115,16 @@ final class ComposerContext: ObservableObject {
 
     /// The session's choice, or the catalog default a fresh session will use.
     func selection(_ model: SessionModel) -> (provider: String, model: String, effort: String?)? {
-        model.modelSelection ?? catalogDefault.map { ($0.provider, $0.model, nil) }
+        model.modelSelection ?? preferredDefault.map { ($0.provider, $0.model, nil) }
+    }
+
+    /// 配好中转站/自定义 API 之后，新会话默认用它，而不是仍然指向官方（官方没账号时
+    /// 会在对话框里要 API Key）。用户手动选过模型就按 `modelSelection` 走。
+    private var preferredDefault: (provider: String, model: String, effort: String?)? {
+        let official = ["deepseek-account", "deepseek-official"]
+        guard let fallback = catalogDefault, official.contains(fallback.provider) else { return catalogDefault }
+        guard let custom = catalog.first(where: { !official.contains($0.id) && !$0.models.isEmpty }) else { return catalogDefault }
+        return (custom.models[0].provider, custom.models[0].model, nil)
     }
 
     private func choice(_ provider: String, _ model: String) -> ModelChoice? {

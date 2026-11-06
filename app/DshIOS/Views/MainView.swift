@@ -86,14 +86,6 @@ struct MainView: View {
             guard let update = UpdateChecker.shared.takeAnnouncement() else { return }
             app.showToast(String(localized: "发现新版本 \(update.version)"), action: String(localized: "更新")) { openURL(update.url) }
         }
-        // After a pause, and only into a quiet app: otherwise the next finished turn asks instead.
-        .task(id: app.supportMoment) {
-            guard app.supportMoment > 0 else { return }
-            try? await Task.sleep(for: .seconds(2))
-            guard !Task.isCancelled, canAnnounce, app.toast == nil, app.currentSession == selection,
-                  !app.sessions.values.contains(where: \.running), SupportPrompt.take() else { return }
-            supportDialog = true
-        }
         // Windows take turns: what is read is the one in front.
         .onChange(of: scenePhase) { phase in if phase == .active { app.currentSession = selection } }
         .onChange(of: selection) { id in
@@ -171,17 +163,6 @@ struct MainView: View {
         }
         .modifier(ShellDialogs())
         .overlay { ShellNotices() }
-        .overlay {
-            if supportDialog {
-                SupportDialog(
-                    star: { settleSupport { openURL(AppLinks.repository) } },
-                    share: { settleSupport { AppLinks.share() } },
-                    later: { supportDialog = false }
-                )
-                .transition(.opacity.combined(with: .scale(scale: 0.94)))
-            }
-        }
-        .animation(.smoothSpring, value: supportDialog)
         // A live turn ran out of account balance: offer Platform's top-up page, then re-read balances.
         .alert("当前无可用余额", isPresented: Binding(get: { app.account.quotaPrompt }, set: { app.account.quotaPrompt = $0 })) {
             Button("取消", role: .cancel) {}

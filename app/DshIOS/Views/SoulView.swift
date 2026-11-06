@@ -20,8 +20,12 @@ enum Soul {
     static let marker = "<!-- dsh-soul -->"
 
     static let defaultPersona = """
-你是操作者的长期搭档。先给结论，再给依据；不确定就说不确定，不编造 API、路径、版本号。
-代码要能跑，说明放在代码之后；用他给的文件名、目录名和参数名。
+你是操作者的长期搭档，做工程、排障、写代码、查资料。
+
+说话：先给结论，再给依据。不确定就直说不确定，不编造 API、路径、版本号或行号。
+给代码时：完整、能跑，用他给的文件名、目录名和参数名；说明放在代码之后。
+给方案时：先说清楚代价和风险，再给推荐选项；有更简单的做法就直说。
+不做没被要求的推销，不复述他的话，不在每段结尾加总结。
 """
 
     static var fileURL: URL { EnginePaths.dshHome.appendingPathComponent("AGENTS.md") }
@@ -115,8 +119,9 @@ struct SoulView: View {
             .groupedRow()
 
             Section {
-                Button("从 txt 导入") { importing = true }
-                Button("保存") { save() }
+                Button("从 md / txt 导入") { importing = true }
+            } footer: {
+                Text("支持 .md 和 .txt，UTF-8。导入会替换上面的内容，点右上角「保存」才写入。")
             }
             .groupedRow()
         }
@@ -124,14 +129,18 @@ struct SoulView: View {
         .navigationTitle("灵魂")
         .navigationBarTitleDisplayMode(.inline)
         .tint(Palette.ink)
-        .fileImporter(isPresented: $importing, allowedContentTypes: [.plainText, .text]) { result in
-            guard case .success(let url) = result else { return }
-            let scoped = url.startAccessingSecurityScopedResource()
-            defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-            if let text = try? String(contentsOf: url, encoding: .utf8) {
-                persona = text
-            } else {
-                failure = String(localized: "读不了这个文件，换 UTF-8 的 txt 试试。")
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("保存") { save() }.fontWeight(.semibold)
+            }
+        }
+        .fileImporter(isPresented: $importing, allowedContentTypes: Self.importTypes, allowsMultipleSelection: false) { result in
+            switch result {
+            case .success(let urls):
+                guard let url = urls.first else { return }
+                read(url)
+            case .failure(let error):
+                failure = error.localizedDescription
             }
         }
         .alert("已保存", isPresented: Binding(get: { notice != nil }, set: { if !$0 { notice = nil } })) {
@@ -143,6 +152,32 @@ struct SoulView: View {
             Button("好", role: .cancel) {}
         } message: {
             Text(failure ?? "")
+        }
+    }
+
+    /// `.md` is its own type; `.plainText` alone does not offer it in the picker.
+    private static var importTypes: [UTType] {
+        var types: [UTType] = [.plainText, .text]
+        if let markdown = UTType(filenameExtension: "md") { types.insert(markdown, at: 0) }
+        return types
+    }
+
+    /// Files lives in iCloud too: coordinate the read so an undownloaded item comes down.
+    private func read(_ url: URL) {
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        var coordinatorError: NSError?
+        var readError: Error?
+        var text: String?
+        NSFileCoordinator().coordinate(readingItemAt: url, options: [], error: &coordinatorError) { readURL in
+            do { text = try String(contentsOf: readURL, encoding: .utf8) } catch { readError = error }
+        }
+        if let text, !text.isEmpty {
+            persona = text
+        } else {
+            failure = coordinatorError?.localizedDescription
+                ?? readError?.localizedDescription
+                ?? String(localized: "读不了这个文件：只支持 UTF-8 的 md / txt。")
         }
     }
 
