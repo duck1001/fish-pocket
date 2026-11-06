@@ -234,7 +234,7 @@ struct MainView: View {
         NavigationSplitView(columnVisibility: $sidebar) {
             drawer.navigationSplitViewColumnWidth(min: 280, ideal: 320, max: 360)
                 .toolbar(.hidden, for: .navigationBar)
-                .toolbar(removing: .sidebarToggle)
+                .hideSidebarToggle16()
         } detail: {
             NavigationStack { conversation(openDrawer: toggleSidebar) }
         }
@@ -293,7 +293,7 @@ struct MainView: View {
                     .offset(x: (progress - 1) * width)
                     .accessibilityHidden(!drawerOpen)
             }
-            .coordinateSpace(.named(DrawerRowFrames.space))
+            .coordinateSpace(name: DrawerRowFrames.space)
             .background {
                 DrawerEdgePan(enabled: !drawerOpen) { translation in
                     if drag == 0 { dismissKeyboard() }

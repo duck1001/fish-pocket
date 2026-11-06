@@ -317,7 +317,7 @@ struct AttachmentRail: View {
                     .padding(.trailing, 4)
                 }
                 .onChange(of: composer.attachments.count) { new in
-                    if new > old, let last = composer.attachments.last { withAnimation { proxy.scrollTo(last.id, anchor: .trailing) } }
+                    if let last = composer.attachments.last { withAnimation { proxy.scrollTo(last.id, anchor: .trailing) } }
                 }
             }
         }

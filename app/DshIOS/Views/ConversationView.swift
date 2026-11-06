@@ -38,6 +38,8 @@ struct ConversationView: View {
     /// Approvals seen since none were waiting, for the 「1/3」 of the sheet.
     @State private var approvalBatch: Set<String> = []
     @State private var keyboardUp = false
+    /// The approval/question that already tapped, so a redraw does not tap again.
+    @State private var lastWarningId: String?
     @State private var composerFocused = false
     /// The new-conversation page's free height: a short one drops the headline.
     @State private var heroHeight: CGFloat = .infinity
@@ -284,7 +286,8 @@ struct ConversationView: View {
         .onChange(of: presentedInteractionId(model)) { id in if id != nil { dismissKeyboard() } }
         // An approval or question arriving: the one alert-like tap (as the web's warning tone).
         .onChange(of: waitingInteraction(model)?.id) { new in
-            if let new, new != old { Haptics.warning() }
+            if let new, new != lastWarningId { Haptics.warning() }
+            lastWarningId = new
         }
         .onAppear { syncApprovalBatch() }
         .onChange(of: pendingApprovalIds) { _ in syncApprovalBatch() }

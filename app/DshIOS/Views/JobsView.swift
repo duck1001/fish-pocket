@@ -250,7 +250,7 @@ struct JobOutputView: View {
                     Color.clear.frame(height: 1).id("bottom")
                         // iOS 17 has no scroll geometry; this marker's place in the scroll view says the same.
                         .measureGeometry(for: OutputEnd.self) { geometry in
-                            OutputEnd(contentHeight: geometry.frame(in: .named("output")).maxY, distance: -(geometry.bounds(of: .scrollView)?.maxY ?? 0))
+                            OutputEnd(contentHeight: geometry.frame(in: .named("output")).maxY, distance: 0)
                         } action: { new in
                             if new.contentHeight > end.contentHeight, end.distance <= OutputEnd.threshold { proxy.scrollTo("bottom", anchor: .bottom) }
                             end = new

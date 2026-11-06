@@ -17,7 +17,7 @@ struct DshIOSApp: App {
         .commands { ShellCommands() }
         .onChange(of: scenePhase) { phase in
             BackgroundKeeper.shared.scenePhaseChanged(to: phase)
-            if #available(iOS 16.1, *) { LiveActivityController.shared.scenePhaseChanged(to: phase) }
+            if #available(iOS 16.2, *) { LiveActivityController.shared.scenePhaseChanged(to: phase) }
         }
     }
 }

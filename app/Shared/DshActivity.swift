@@ -5,7 +5,7 @@ import Foundation
 /// The Live Activity (lock screen and Dynamic Island) while agent work runs.
 /// Compiled into the app and the widget extension; the app starts and updates
 /// it (`LiveActivityController`), the extension draws it.
-@available(iOS 16.1, *)
+@available(iOS 16.2, *)
 struct DshActivityAttributes: ActivityAttributes {
     struct ContentState: Codable, Hashable {
         enum Phase: String, Codable { case running, approval, question, done }

@@ -103,8 +103,8 @@ struct ImageViewer: View {
                 .scaleEffect(scale)
                 .offset(offset)
                 .gesture(
-                    MagnifyGesture()
-                        .onChanged { scale = max(1, min(6, lastScale * $0.magnification)) }
+                    MagnificationGesture()
+                        .onChanged { value in scale = max(1, min(6, lastScale * value)) }
                         .onEnded { _ in
                             lastScale = scale
                             if scale == 1 { withAnimation(.smoothSpring) { offset = .zero }; lastOffset = .zero }

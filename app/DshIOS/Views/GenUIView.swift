@@ -144,8 +144,14 @@ private struct ChartView: View {
             if let title = options["title"]["text"].string { Text(title).font(.subheadline.bold()) }
             Chart(points) { point in
                 if kind.contains("Pie") || kind.contains("Ring") {
-                    SectorMark(angle: .value(point.series, point.value), innerRadius: .ratio(kind.contains("Ring") ? 0.5 : 0))
-                        .foregroundStyle(by: .value("类别", point.category))
+                    if #available(iOS 17.0, *) {
+                        SectorMark(angle: .value(point.series, point.value), innerRadius: .ratio(kind.contains("Ring") ? 0.5 : 0))
+                            .foregroundStyle(by: .value("类别", point.category))
+                    } else {
+                        // No SectorMark below 17: the same data as bars.
+                        BarMark(x: .value("类别", point.category), y: .value(point.series, point.value))
+                            .foregroundStyle(by: .value("类别", point.category))
+                    }
                 } else if kind.contains("Line") || kind.contains("Area") {
                     LineMark(x: .value("类别", point.category), y: .value(point.series, point.value))
                         .foregroundStyle(by: .value("系列", point.series))

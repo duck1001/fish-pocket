@@ -12,7 +12,7 @@ import SwiftUI
 /// Updates are local; the engine keeps running off screen (BackgroundKeeper),
 /// so no push service is involved.
 @MainActor
-@available(iOS 16.1, *)
+@available(iOS 16.2, *)
 final class LiveActivityController {
     typealias State = DshActivityAttributes.ContentState
 

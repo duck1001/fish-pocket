@@ -83,8 +83,8 @@ struct DrawerView: View {
             .navigationDestination(for: Route.self) { _ in archivedPage }
         }
         .task(id: search) { await searchRemote() }
-        .onChange(of: searchRequest) { searchFocused = true }
-        .onChange(of: groupBy) { Haptics.select() }
+        .onChange(of: searchRequest) { _ in searchFocused = true }
+        .onChange(of: groupBy) { _ in Haptics.select() }
         .confirmationDialog("删除「\(removingWorkspace?.displayTitle ?? "")」？", isPresented: Binding(get: { removingWorkspace != nil }, set: { if !$0 { removingWorkspace = nil } }), titleVisibility: .visible) {
             Button("删除工作区", role: .destructive) {
                 if let workspace = removingWorkspace {

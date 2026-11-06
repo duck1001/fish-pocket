@@ -112,7 +112,7 @@ struct GoalInfo: Equatable {
 @MainActor
 final class ComposerModel: ObservableObject {
     /// Weak: sends and uploads outlive the conversation that started them (the session owns this model).
-    @Published private weak var session: SessionModel?
+    private weak var session: SessionModel?
     let sessionId: String
     let app: AppModel
 

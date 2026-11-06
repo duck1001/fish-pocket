@@ -55,7 +55,7 @@ final class SessionModel: ObservableObject {
     /// The child's own mode (`subagent` projection): tells an address opened as `unknown`.
     @Published private(set) var subagentMode: String?
     /// The open conversation's model catalog; a prompt first moves off a model that no longer routes.
-    @Published weak var modelCatalog: ComposerContext?
+    weak var modelCatalog: ComposerContext?
     /// Composer state (draft, local echoes, attachments): one per open conversation.
     private(set) lazy var composer = ComposerModel(session: self, app: app)
 

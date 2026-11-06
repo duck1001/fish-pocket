@@ -1,15 +1,10 @@
 //
 //  Compat16.swift
-//  fish-pocket — iOS 16.0 backports for the SwiftUI APIs the app uses from 16.1, 16.4,
-//  17 and 18.
+//  fish-pocket — iOS 16.0 backports for the SwiftUI/UIKit APIs the app uses from later systems.
 //
-//  Drop into app/DshIOS/ (picked up by `path: DshIOS` in project.yml) and add it to the
-//  LiveActivity target only if the extension ever needs it — it does not.
-//
-//  Naming: extension members that would collide with an SDK declaration of the same
-//  name (`Animation.snappy`, `View.onGeometryChange`) are renamed instead of shadowed,
-//  so overload resolution never depends on availability filtering. `ContentUnavailableView`
-//  stays as-is: a type declared in the app module always wins over an imported one.
+//  Names that would collide with an SDK declaration (`Animation.snappy`,
+//  `View.onGeometryChange`) are renamed instead of shadowed. `ContentUnavailableView`
+//  keeps its name: a type declared in the app module wins over the imported one.
 //
 
 import SwiftUI
@@ -21,7 +16,6 @@ extension Animation {
     /// iOS 17's `.snappy`. Response 0.32 / damping 0.82 is the closest stable equivalent.
     static var smoothSpring: Animation { .spring(response: 0.32, dampingFraction: 0.82) }
 
-    /// `.snappy(duration: 0.2)` — the response follows the requested duration.
     static func smoothSpring(duration: TimeInterval, extraBounce: Double = 0) -> Animation {
         .spring(response: duration, dampingFraction: max(0.6, 1.0 - extraBounce * 0.4))
     }
@@ -32,10 +26,6 @@ extension Animation {
 extension View {
     /// iOS 18's `onGeometryChange(for:of:action:)`. Same signature, `transform` gets a
     /// `GeometryProxy`, so `.frame(in: .named(...))` call sites work unchanged.
-    ///
-    /// Measures through a `background`, one layout pass more than the system version.
-    /// Watch the self-sizing text editor (ComposerView) and the folded cards
-    /// (ConversationView) for a one-frame oscillation.
     func measureGeometry<T: Equatable>(
         for type: T.Type,
         of transform: @escaping (GeometryProxy) -> T,
@@ -56,7 +46,9 @@ struct GeometryChangeModifier<T: Equatable>: ViewModifier {
                     Color.clear.preference(key: GeometryChangeKey<T>.self, value: transform(proxy))
                 }
             )
-            .onPreferenceChange(GeometryChangeKey<T>.self) { action($0) }
+            .onPreferenceChange(GeometryChangeKey<T>.self) { value in
+                if let value { action(value) }
+            }
     }
 }
 
@@ -67,16 +59,10 @@ struct GeometryChangeKey<T: Equatable>: PreferenceKey {
     }
 }
 
-// MARK: - ContentUnavailableView  (iOS 17)
+// MARK: - ContentUnavailableView (iOS 17)
 
-/// Same three shapes the app uses:
-///
-///     ContentUnavailableView { Label(...) } description: { Text(...) } actions: { Button(...) }
-///     ContentUnavailableView("标题", systemImage: "doc")
-///     ContentUnavailableView("标题", systemImage: "doc", description: Text("..."))
-///     ContentUnavailableView.search(text: query)
-struct ContentUnavailableView<Label: View, Description: View, Actions: View>: View {
-    @ViewBuilder var label: Label
+struct ContentUnavailableView<Title: View, Description: View, Actions: View>: View {
+    @ViewBuilder var label: Title
     @ViewBuilder var description: Description
     @ViewBuilder var actions: Actions
 
@@ -99,52 +85,57 @@ struct ContentUnavailableView<Label: View, Description: View, Actions: View>: Vi
     }
 }
 
-extension ContentUnavailableView where Description == EmptyView, Actions == EmptyView {
+extension ContentUnavailableView where Title == SwiftUI.Label<Text, Image>,
+    Description == EmptyView, Actions == EmptyView {
     init(_ title: LocalizedStringKey, systemImage: String) {
-        self.init {
-            SwiftUI.Label(title, systemImage: systemImage)
-        } description: {
-            EmptyView()
-        } actions: {
-            EmptyView()
-        }
+        self.init(
+            label: { SwiftUI.Label(title, systemImage: systemImage) },
+            description: { EmptyView() },
+            actions: { EmptyView() }
+        )
+    }
+}
+
+extension ContentUnavailableView where Title == SwiftUI.Label<Text, Image>,
+    Description == Text, Actions == EmptyView {
+    init(_ title: LocalizedStringKey, systemImage: String, description: Text) {
+        self.init(
+            label: { SwiftUI.Label(title, systemImage: systemImage) },
+            description: { description },
+            actions: { EmptyView() }
+        )
     }
 }
 
 extension ContentUnavailableView where Actions == EmptyView {
-    init(_ title: LocalizedStringKey, systemImage: String, description: Text? = nil) {
-        self.init {
-            SwiftUI.Label(title, systemImage: systemImage)
-        } description: {
-            if let description { description }
-        } actions: {
-            EmptyView()
-        }
+    /// `ContentUnavailableView { label } description: { … }`
+    init(@ViewBuilder label: () -> Title, @ViewBuilder description: () -> Description) {
+        self.init(label: label, description: description, actions: { EmptyView() })
     }
 }
 
-extension ContentUnavailableView where Description == Text, Actions == EmptyView {
-    static func search(text: String?) -> ContentUnavailableView<SwiftUI.Label<Text, Image>, Text, EmptyView> {
+extension ContentUnavailableView where Description == EmptyView {
+    /// `ContentUnavailableView { label } actions: { … }`
+    init(@ViewBuilder label: () -> Title, @ViewBuilder actions: () -> Actions) {
+        self.init(label: label, description: { EmptyView() }, actions: actions)
+    }
+}
+
+extension ContentUnavailableView where Title == SwiftUI.Label<Text, Image>,
+    Description == Text, Actions == EmptyView {
+    static func search(text: String?)
+        -> ContentUnavailableView<SwiftUI.Label<Text, Image>, Text, EmptyView> {
         let query = text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        return ContentUnavailableView<SwiftUI.Label<Text, Image>, Text, EmptyView> {
-            SwiftUI.Label("无结果", systemImage: "magnifyingglass")
-        } description: {
-            Text(query.isEmpty ? "没有找到结果" : "没有找到「\(query)」")
-        } actions: {
-            EmptyView()
-        }
+        return ContentUnavailableView<SwiftUI.Label<Text, Image>, Text, EmptyView>(
+            label: { SwiftUI.Label("无结果", systemImage: "magnifyingglass") },
+            description: { Text(query.isEmpty ? "没有找到结果" : "没有找到「\(query)」") },
+            actions: { EmptyView() }
+        )
     }
 }
 
 // MARK: - Sheets: presentationCornerRadius / presentationBackground (iOS 16.4)
 
-/// Back-ports the two 16.4 presentation modifiers through UIKit:
-/// `UISheetPresentationController.preferredCornerRadius` has been there since iOS 15,
-/// and the sheet's own view controller background is what shows through a translucent
-/// SwiftUI background.
-///
-///     .sheetCornerRadius(36)          // was .presentationCornerRadius(36)
-///     .sheetBackground(Palette.background)   // was .presentationBackground(...)
 struct SheetAppearance: UIViewControllerRepresentable {
     var cornerRadius: CGFloat?
     var background: Color?
@@ -177,8 +168,6 @@ struct SheetAppearance: UIViewControllerRepresentable {
         }
 
         func apply() {
-            // The sheet's hosting controller is an ancestor; its presentationController
-            // is the UISheetPresentationController.
             var current: UIViewController? = self
             while let vc = current {
                 if let sheet = vc.presentationController as? UISheetPresentationController {
@@ -205,15 +194,9 @@ extension View {
         background(SheetAppearance(cornerRadius: nil, background: color))
     }
 
-    /// Was `.presentationBackgroundInteraction(.enabled)` (iOS 16.4).
-    ///
-    /// No equivalent exists below 16.4: touches behind a sheet cannot be routed to the
-    /// presented view through the public API (it needs a custom UIPresentationController
-    /// with a passthrough container). No-op on 16.0–16.3; the sheet stays modal and a tap
-    /// behind dismisses it, as any sheet would.
-    func sheetBackgroundTappable(_ enabled: Bool = true) -> some View {
-        self
-    }
+    /// Was `.presentationBackgroundInteraction(.enabled)` (iOS 16.4). No public equivalent
+    /// below 16.4 — it needs a custom UIPresentationController with a passthrough container.
+    func sheetBackgroundTappable(_ enabled: Bool = true) -> some View { self }
 }
 
 // MARK: - Scroll: scrollBounceBehavior (iOS 16.4)
@@ -225,8 +208,7 @@ enum ScrollBounce16 {
 }
 
 extension View {
-    /// Was `.scrollBounceBehavior(...)`. Sets `alwaysBounceVertical` on the enclosing
-    /// UIScrollView: `.basedOnSize` is exactly `alwaysBounceVertical = false`.
+    /// Was `.scrollBounceBehavior(...)`: `alwaysBounceVertical` on the enclosing UIScrollView.
     func scrollBounce(_ behavior: ScrollBounce16) -> some View {
         background(ScrollBounceProbe(behavior: behavior))
     }
@@ -253,7 +235,6 @@ struct ScrollBounceProbe: UIViewRepresentable {
         override func didMoveToWindow() {
             super.didMoveToWindow()
             apply()
-            // SwiftUI installs the scroll view around the content after the first layout.
             DispatchQueue.main.async { [weak self] in self?.apply() }
         }
 
@@ -267,8 +248,7 @@ struct ScrollBounceProbe: UIViewRepresentable {
             while let view = current {
                 if let scroll = view as? UIScrollView {
                     switch behavior {
-                    case .automatic:
-                        break
+                    case .automatic: break
                     case .always:
                         if !scroll.alwaysBounceVertical { scroll.alwaysBounceVertical = true }
                     case .basedOnSize:
@@ -282,46 +262,10 @@ struct ScrollBounceProbe: UIViewRepresentable {
     }
 }
 
-// MARK: - Scroll anchoring: defaultScrollAnchor(.bottom) (iOS 17)
-
-/// Stands in for `defaultScrollAnchor(.bottom, for: .initialOffset/.sizeChanges)`.
-///
-///     ScrollViewReader { proxy in
-///         ScrollView { content; BottomMark(id: "bottom", space: "timeline", onChange: ...) }
-///             .coordinateSpace(name: "timeline")
-///             .onAppear { proxy.scrollTo("bottom", anchor: .bottom) }
-///     }
-struct BottomMark: View {
-    let id: String
-    var space: String
-    var onChange: (CGFloat) -> Void = { _ in }
-
-    var body: some View {
-        Color.clear
-            .frame(height: 0)
-            .id(id)
-            .background(
-                GeometryReader { proxy in
-                    Color.clear.preference(
-                        key: BottomDistanceKey.self,
-                        value: proxy.frame(in: .named(space)).maxY
-                    )
-                }
-            )
-            .onPreferenceChange(BottomDistanceKey.self) { onChange($0) }
-    }
-}
-
-struct BottomDistanceKey: PreferenceKey {
-    static var defaultValue: CGFloat = .zero
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
-}
-
-// MARK: - defaultScrollAnchor (iOS 17), for the places that only wanted "open here"
+// MARK: - defaultScrollAnchor (iOS 17)
 
 extension View {
-    /// iOS 17's `defaultScrollAnchor`. Below 17 the scroll view opens at its natural offset,
-    /// which is what these three call sites did before the anchor existed.
+    /// iOS 17's `defaultScrollAnchor`. Below 17 the scroll view opens at its natural offset.
     @ViewBuilder
     func scrollAnchor16(_ anchor: UnitPoint) -> some View {
         if #available(iOS 17.0, *) {
@@ -332,10 +276,21 @@ extension View {
     }
 }
 
+// MARK: - toolbar(removing: .sidebarToggle) (iOS 17)
+
+extension View {
+    @ViewBuilder
+    func hideSidebarToggle16() -> some View {
+        if #available(iOS 17.0, *) {
+            toolbar(removing: .sidebarToggle)
+        } else {
+            self
+        }
+    }
+}
+
 // MARK: - inspector (iOS 17): the iPad workbench column
 
-/// `.inspector` on 17+, a sheet on 16. On iPhone the conversation never asks for it
-/// (`sizeClass == .regular` is the iPad case), so the fallback only changes iPad.
 struct WorkbenchInspector<Panel: View>: ViewModifier {
     @Binding var isPresented: Bool
     @ViewBuilder var panel: () -> Panel

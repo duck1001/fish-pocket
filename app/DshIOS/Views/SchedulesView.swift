@@ -772,7 +772,7 @@ struct EngineWebView: UIViewRepresentable {
 
     func makeUIView(context: Context) -> WKWebView {
         let view = WKWebView(frame: .zero, configuration: WKWebViewConfiguration())
-        view.isInspectable = true
+        if #available(iOS 16.4, *) { view.isInspectable = true }
         view.load(URLRequest(url: url))
         return view
     }

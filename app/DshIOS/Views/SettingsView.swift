@@ -79,8 +79,8 @@ struct SettingsView: View {
                     Text(backgroundFooter)
                 }
                 .groupedRow()
-                .onChange(of: keepAlive) { BackgroundKeeper.shared.settingsChanged() }
-                .onChange(of: continuedProcessing) { BackgroundKeeper.shared.settingsChanged() }
+                .onChange(of: keepAlive) { _ in BackgroundKeeper.shared.settingsChanged() }
+                .onChange(of: continuedProcessing) { _ in BackgroundKeeper.shared.settingsChanged() }
                 .alert("关闭静音音频？", isPresented: $confirmingKeepAliveOff) {
                     Button("取消", role: .cancel) {}
                     Button("关闭", role: .destructive) { keepAlive = false }

@@ -182,7 +182,7 @@ final class AppModel: ObservableObject {
             followScheduleCatalog()
             account.follow()
             BackgroundKeeper.shared.attach { [weak self] in await self?.refreshSessions() }
-            if #available(iOS 16.1, *) { LiveActivityController.shared.attach(self) }
+            if #available(iOS 16.2, *) { LiveActivityController.shared.attach(self) }
         } catch {
             lastError = error.localizedDescription
         }

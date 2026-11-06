@@ -89,7 +89,7 @@ final class TerminalConnection: ObservableObject {
     private let mux: StreamMux
     private let client: EngineClient
     private let sessionId: String
-    @Published private weak var view: SwiftTerm.TerminalView?
+    private weak var view: SwiftTerm.TerminalView?
     /// Frames that arrived before the view did, oldest first (a snapshot replaces them).
     @Published private var unrendered: [JSON] = []
     @Published private var attachTask: Task<Void, Never>?

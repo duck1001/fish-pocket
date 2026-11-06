@@ -64,8 +64,10 @@ struct AgentPresetsPage: View {
         .groupedList()
         .navigationTitle("Agent 预设")
         .navigationBarTitleDisplayMode(.inline)
-        .navigationDestination(item: $reading) { preset in
-            AgentPresetReader(id: preset["id"].string ?? "", title: presetDisplayName(preset))
+        .navigationDestination(isPresented: Binding(get: { reading != nil }, set: { if !$0 { reading = nil } })) {
+            if let preset = reading {
+                AgentPresetReader(id: preset["id"].string ?? "", title: presetDisplayName(preset))
+            }
         }
         .task(id: app.settingsRevision) { await load() }
         .followSettings()

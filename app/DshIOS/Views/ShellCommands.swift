@@ -20,12 +20,12 @@ struct WorkbenchCommands {
 
 extension FocusedValues {
     var windowCommands: WindowCommands? {
-        get { self[WindowCommandsEnvironmentKey.self] }
-        set { self[WindowCommandsEnvironmentKey.self] = newValue }
+        get { self[WindowCommandsFocusedValueKey.self] }
+        set { self[WindowCommandsFocusedValueKey.self] = newValue }
     }
     var workbenchCommands: WorkbenchCommands? {
-        get { self[WorkbenchCommandsEnvironmentKey.self] }
-        set { self[WorkbenchCommandsEnvironmentKey.self] = newValue }
+        get { self[WorkbenchCommandsFocusedValueKey.self] }
+        set { self[WorkbenchCommandsFocusedValueKey.self] = newValue }
     }
 }
 
@@ -77,10 +77,10 @@ struct ShellCommands: Commands {
     }
 }
 
-private struct WindowCommandsEnvironmentKey: EnvironmentKey {
-    static let defaultValue: WindowCommands? = nil
+private struct WindowCommandsFocusedValueKey: FocusedValueKey {
+    typealias Value = WindowCommands
 }
 
-private struct WorkbenchCommandsEnvironmentKey: EnvironmentKey {
-    static let defaultValue: WorkbenchCommands? = nil
+private struct WorkbenchCommandsFocusedValueKey: FocusedValueKey {
+    typealias Value = WorkbenchCommands
 }
