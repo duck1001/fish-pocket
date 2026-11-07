@@ -79,7 +79,6 @@ struct SoulView: View {
     @AppStorage(Soul.languageKey) private var language = Soul.automatic
     @AppStorage(Soul.toneKey) private var tone = Soul.gentle
     @State private var persona = Soul.persona
-    @State private var importing = false
     @State private var notice: String?
     @State private var failure: String?
 
@@ -105,7 +104,7 @@ struct SoulView: View {
             Section {
                 TextEditor(text: $persona)
                     .font(.callout)
-                    .frame(minHeight: 240)
+                    .frame(height: 180)
                     .scrollContentBackground(.hidden)
             } header: {
                 HStack {
@@ -119,11 +118,9 @@ struct SoulView: View {
             .groupedRow()
 
             Section {
-                Button("从 md / txt 导入") { importing = true }
             } footer: {
-                Text("支持 .md 和 .txt，UTF-8。导入会替换上面的内容，点右上角「保存」才写入。")
+                Text("直接粘贴或输入人格提示词，点右上角「保存」写入。")
             }
-            .groupedRow()
         }
         .groupedList()
         .navigationTitle("灵魂")
@@ -132,15 +129,6 @@ struct SoulView: View {
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("保存") { save() }.fontWeight(.semibold)
-            }
-        }
-        .fileImporter(isPresented: $importing, allowedContentTypes: Self.importTypes, allowsMultipleSelection: false) { result in
-            switch result {
-            case .success(let urls):
-                guard let url = urls.first else { return }
-                read(url)
-            case .failure(let error):
-                failure = error.localizedDescription
             }
         }
         .alert("已保存", isPresented: Binding(get: { notice != nil }, set: { if !$0 { notice = nil } })) {
@@ -152,31 +140,6 @@ struct SoulView: View {
             Button("好", role: .cancel) {}
         } message: {
             Text(failure ?? "")
-        }
-    }
-
-    /// `.md` is its own type; `.plainText` alone does not offer it in the picker.
-    private static var importTypes: [UTType] {
-        var types: [UTType] = [.plainText, .text]
-        if let markdown = UTType(filenameExtension: "md") { types.insert(markdown, at: 0) }
-        return types
-    }
-
-    /// 选择器给的是 security-scoped URL：先整份拷进沙盒，再按 UTF-8 / UTF-16 / Latin-1 依次试。
-    private func read(_ url: URL) {
-        RunLog.note("导入人格文件 \(url.lastPathComponent)")
-        do {
-            let staged = try PickedFile.stage(url)
-            guard let text = PickedFile.text(at: staged) else {
-                RunLog.note("人格文件解码失败 \(url.lastPathComponent)")
-                failure = String(localized: "读不了这个文件：请另存为 UTF-8 的 md / txt。")
-                return
-            }
-            persona = text
-            RunLog.note("人格文件导入成功，\(text.count) 字")
-        } catch {
-            RunLog.note("人格文件读取失败", error: error)
-            failure = error.localizedDescription
         }
     }
 

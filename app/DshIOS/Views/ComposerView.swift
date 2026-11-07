@@ -268,6 +268,13 @@ struct ComposerView: View {
             if let trigger {
                 CandidatePanel(model: model, context: context, hit: trigger, pick: { pick($0, over: trigger) }, showAll: { refocus = true; browsing = trigger })
             }
+            // 输入框上面一行：左边上下文与 tok/s，右边模型（点开选模型/思考强度）。
+            HStack(spacing: 8) {
+                ContextMeter(model: model, composer: composer, rate: model.rate)
+                Spacer(minLength: 0)
+                ModelPicker(model: model, context: context, compact: true)
+            }
+            .padding(.horizontal, 6)
             field
                 .background(Palette.field, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
         }
@@ -286,11 +293,15 @@ struct ComposerView: View {
             }
             .ignoresSafeArea()
         }
-        .fileImporter(isPresented: $showFiles, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
-            guard case .success(let urls) = result else { return }
-            let folders = urls.filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true }
-            if !folders.isEmpty { app.showToast(String(localized: "只有桌面端支持添加文件夹，请添加单个文件")) }
-            composer.addFiles(urls.filter { !folders.contains($0) })
+        .sheet(isPresented: $showFiles) {
+            // asCopy：系统先复制进沙盒，拿到的是普通 URL，不再是外部容器的安全作用域引用。
+            DocumentPicker(types: [.item], allowsMultiple: true) { urls in
+                showFiles = false
+                let folders = urls.filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true }
+                if !folders.isEmpty { app.showToast(String(localized: "只有桌面端支持添加文件夹，请添加单个文件")) }
+                composer.addFiles(urls.filter { !folders.contains($0) })
+            }
+            .ignoresSafeArea()
         }
         .sheet(isPresented: $showModels) { ModelSearchSheet(model: model, context: context) }
         .sheet(isPresented: trayShown(sizeClass != .regular), onDismiss: sheetClosed) { tray }
@@ -364,14 +375,6 @@ struct ComposerView: View {
                     .padding(.horizontal, 17)
                     .padding(.top, 4)
             }
-            // 模型在左（点开就是模型 + 思考强度），上下文在右：同一行，贴着输入框。
-            HStack(spacing: 8) {
-                ContextMeter(model: model, composer: composer, rate: model.rate)
-                Spacer(minLength: 0)
-                ModelPicker(model: model, context: context, compact: true)
-            }
-            .padding(.horizontal, 12)
-            .padding(.top, 6)
             HStack(alignment: .bottom, spacing: 6) {
                 plusButton
                 input

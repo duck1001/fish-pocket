@@ -32,8 +32,6 @@ struct ConversationView: View {
     @State private var atBottom = true
     @State private var showTurns = false
     @State private var timelineTop: CGFloat = 0
-    /// Viewport height: a conversation shorter than the screen sits at its bottom, like a chat should.
-    @State private var timelineViewport: CGFloat = 0
     /// What a timeline row opened. Up here, not on the row: a turn that closes folds its rows
     /// and would take the sheet along, and an approval arriving must be able to take over.
     @State private var detail: TimelineDetail?
@@ -119,14 +117,10 @@ struct ConversationView: View {
         let started = !blank && model.subagentAddress == nil && !(!model.loaded && app.sessions[sessionId]?.blank == true)
         ScrollViewReader { proxy in
             ScrollView {
-                VStack(spacing: 0) {
-                    TimelineList(model: model)
-                        .modifier(LinkOpening())
-                    Color.clear.frame(height: 1).id(Self.bottomId)
-                }
-                .frame(minHeight: timelineViewport, alignment: .bottom)
+                TimelineList(model: model)
+                    .modifier(LinkOpening())
+                Color.clear.frame(height: 1).id(Self.bottomId)
             }
-            .measureGeometry(for: CGFloat.self) { $0.size.height } action: { timelineViewport = $0 }
             .environment(\.timelineScroll, TimelineScroll(keep: { id in
                 Task { @MainActor in
                     // The rows above have to be laid out before their height can be kept.
