@@ -19,7 +19,7 @@ struct SettingsView: View {
     @State private var catalogDefaultPermission = ""
     @State private var confirmingFullAccess = false
     @AppStorage(BackgroundKeeper.enabledKey) private var keepAlive = true
-    @AppStorage(IconStylePreference.key) private var iconStyle = IconStylePreference.line
+    @AppStorage(AutoCollapse.key) private var autoCollapse = true
     @AppStorage(Soul.languageKey) private var soulLanguage = Soul.automatic
     @AppStorage(Soul.toneKey) private var soulTone = Soul.gentle
     @State private var confirmingKeepAliveOff = false
@@ -66,10 +66,7 @@ struct SettingsView: View {
                             Text("浅色").tag("light")
                             Text("深色").tag("dark")
                         }
-                        Picker("图标", selection: Binding(get: { iconStyle }, set: { iconStyle = $0 })) {
-                            Text("线性").tag(IconStylePreference.line)
-                            Text("填充").tag(IconStylePreference.fill)
-                        }
+                        Toggle("卡片自动折叠", isOn: $autoCollapse)
                     }
                 }
                 .groupedRow()
@@ -348,7 +345,6 @@ private struct AboutPage: View {
                 LabeledContent("引擎", value: "DeepSeek Harness")
                 if let engineVersion { LabeledContent("引擎版本", value: engineVersion) }
                 LabeledContent("App 版本", value: Self.appVersion)
-                UpdateRow()
                 LabeledContent("系统", value: ProcessInfo.processInfo.operatingSystemVersionString)
             }
             .groupedRow()

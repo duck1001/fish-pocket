@@ -345,7 +345,9 @@ struct TerminalCard: View {
     let status: ExitStatus?
     let state: ToolPresentation.State
     let cwd: String?
-    @State private var open = false
+    @AppStorage(AutoCollapse.key) private var autoCollapse = true
+    @State private var expanded = false
+    private var open: Bool { !autoCollapse || expanded }
 
     private var row: ToolPresentation { ToolPresentation(call: call, live: false, cwd: cwd) }
     private var command: String { call.arguments["command"].string ?? call.rawArguments }
@@ -354,7 +356,7 @@ struct TerminalCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             // 默认折叠：一行命令，点一下才展开输出。执行中的只在标题旁边说一声。
-            Button { withAnimation(.smoothSpring) { open.toggle() } } label: {
+            Button { withAnimation(.smoothSpring) { expanded.toggle() } } label: {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text("$ " + command)
                         .font(.caption.monospaced())

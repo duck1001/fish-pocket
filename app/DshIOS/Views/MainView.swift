@@ -80,12 +80,6 @@ struct MainView: View {
         // through the same door, and a wider match would swallow every new window.
         .handlesExternalEvents(preferring: ["dsh://"], allowing: ["dsh://"])
         .task(id: app.workspaces.map(\.id)) { if selection == nil { newConversation(in: workspace) } }
-        .task(id: canAnnounce) {
-            guard canAnnounce else { return }
-            await UpdateChecker.shared.checkIfDue()
-            guard let update = UpdateChecker.shared.takeAnnouncement() else { return }
-            app.showToast(String(localized: "发现新版本 \(update.version)"), action: String(localized: "更新")) { openURL(update.url) }
-        }
         // Windows take turns: what is read is the one in front.
         .onChange(of: scenePhase) { phase in if phase == .active { app.currentSession = selection } }
         .onChange(of: selection) { id in
