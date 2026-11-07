@@ -23,7 +23,6 @@ struct SettingsView: View {
     @AppStorage(Soul.languageKey) private var soulLanguage = Soul.automatic
     @AppStorage(Soul.toneKey) private var soulTone = Soul.gentle
     @State private var confirmingKeepAliveOff = false
-    @AppStorage(BackgroundKeeper.continuedKey) private var continuedProcessing = false
 
     private var mirror: SettingsMirror { app.settings }
 
@@ -94,7 +93,6 @@ struct SettingsView: View {
                 }
                 .groupedRow()
                 .onChange(of: keepAlive) { _ in BackgroundKeeper.shared.settingsChanged() }
-                .onChange(of: continuedProcessing) { _ in BackgroundKeeper.shared.settingsChanged() }
                 .alert("关闭静音音频？", isPresented: $confirmingKeepAliveOff) {
                     Button("取消", role: .cancel) {}
                     Button("关闭", role: .destructive) { keepAlive = false }
@@ -209,24 +207,14 @@ struct SettingsView: View {
         }
     }
 
-    /// 任务续跑 is on and available (BackgroundKeeper's continued task needs iOS 26).
-    private var continuesTurns: Bool {
-        guard #available(iOS 26.0, *) else { return false }
-        return continuedProcessing
-    }
-
     /// What happens to in-flight turns without silent audio.
     private var turnsOffScreen: String {
-        continuesTurns
-            ? String(localized: "进行中的任务会继续跑完（系统显示进度，可随时停止）")
-            : String(localized: "进行中的任务最多再跑约 30 秒")
+        String(localized: "进行中的任务最多再跑约 30 秒")
     }
 
     private var backgroundFooter: String {
         guard keepAlive else { return String(localized: "离开 App 后，\(turnsOffScreen)，之后引擎可能被系统暂停。") }
-        return continuesTurns
-            ? String(localized: "离开 App 后播放无声音频，任务、自动化和开发服务器都不停，会多耗一些电。音频被来电等打断时，进行中的任务仍会继续跑完。")
-            : String(localized: "离开 App 后播放无声音频，任务、自动化和开发服务器都不停。会多耗一些电。")
+        return String(localized: "离开 App 后播放无声音频，任务、自动化和开发服务器都不停。会多耗一些电。")
     }
 
     private static func permissionName(_ option: JSON) -> String {
