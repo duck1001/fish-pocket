@@ -373,8 +373,9 @@ struct TerminalCard: View {
                         .foregroundStyle(Palette.secondary)
                         .rotationEffect(.degrees(open ? 0 : -90))
                 }
-                .padding(12)
-                .background(Palette.field, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .padding(.horizontal, open ? 12 : 2)
+                .padding(.vertical, open ? 12 : 5)
+                .background(open ? Palette.field : Color.clear, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)

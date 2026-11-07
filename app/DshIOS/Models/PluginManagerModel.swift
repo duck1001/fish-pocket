@@ -187,7 +187,6 @@ final class PluginManagerModel: ObservableObject {
     /// Optional bundles the main list always holds, in this order.
     static let extensionBundles = [
         "@deepseek-ai/dsh-experimental-agent-team-profile",
-        "@deepseek-ai/dsh-experimental-voice-input-bundle",
         "@deepseek-ai/dsh-experimental-auto-review",
         "@deepseek-ai/dsh-experimental-inspector-profile",
     ]
@@ -201,8 +200,6 @@ final class PluginManagerModel: ObservableObject {
         "@deepseek-ai/dsh-experimental-badge-skill-bundle",
         "@deepseek-ai/dsh-experimental-ralph-bundle",
         "@deepseek-ai/dsh-experimental-plugin-market-bundle",
-        "@deepseek-ai/dsh-subagent-codex",
-        "@deepseek-ai/dsh-subagent-claude-code",
     ]
     static let marketBundle = "@deepseek-ai/dsh-experimental-plugin-market-bundle"
 
