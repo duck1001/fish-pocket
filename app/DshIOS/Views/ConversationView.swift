@@ -119,6 +119,9 @@ struct ConversationView: View {
             ScrollView {
                 TimelineList(model: model)
                     .modifier(LinkOpening())
+                if model.lastTurnInterrupted {
+                    InterruptedNotice(model: model).padding(.horizontal, 16).padding(.top, 8)
+                }
                 Color.clear.frame(height: 1).id(Self.bottomId)
             }
             .environment(\.timelineScroll, TimelineScroll(keep: { id in
@@ -842,6 +845,28 @@ private struct LoadOlderTrigger: View {
 }
 
 /// C-46. The official hint tells the user to send 「继续」; on a phone that is one button.
+/// 上一轮被进程退出打断：红色提示保留，另给一个「继续」。
+private struct InterruptedNotice: View {
+    @ObservedObject var model: SessionModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                StatusDot(state: .waiting)
+                Text("上一轮被中断").font(.subheadline.weight(.medium))
+            }
+            Text("引擎在本轮完成前退出，未完成的工具调用结果未知。可以接着让它继续。")
+                .font(.footnote)
+                .foregroundStyle(Palette.secondary)
+            if !model.running {
+                Button("继续回复") { Haptics.tap(); Task { await model.send(text: String(localized: "继续")) } }
+                    .buttonStyle(.capsule(.outline, height: 44, fill: false))
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
 private struct MaxTokensNotice: View {
     @ObservedObject var model: SessionModel
 

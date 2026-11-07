@@ -249,6 +249,19 @@ final class SessionModel: ObservableObject {
         if !live.isEmpty { live = [] }
     }
 
+    /// 最近一轮被进程退出打断（工具调用带 `interrupted`）：给 UI 一个「继续」入口。
+    var lastTurnInterrupted: Bool {
+        guard !running else { return false }
+        for item in items.reversed() {
+            guard case .assistant(_, let blocks, _, _) = item else { continue }
+            for block in blocks {
+                if case .tool(let call) = block, call.errorCode == "interrupted" { return true }
+            }
+            return false
+        }
+        return false
+    }
+
     // MARK: Timeline
 
     /// Publish the timeline after the builder changed; values are compared first so
