@@ -345,6 +345,7 @@ struct TerminalCard: View {
     let status: ExitStatus?
     let state: ToolPresentation.State
     let cwd: String?
+    @State private var open = false
 
     private var row: ToolPresentation { ToolPresentation(call: call, live: false, cwd: cwd) }
     private var command: String { call.arguments["command"].string ?? call.rawArguments }
@@ -352,26 +353,45 @@ struct TerminalCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            if let path = row.terminalCwd {
-                Text(ToolCall.abbreviate(path, cwd: nil)).font(.caption.monospaced()).foregroundStyle(Palette.secondary).lineLimit(1).truncationMode(.head)
-            }
-            Text("$ " + command)
-                .font(.caption.monospaced())
-                .foregroundStyle(Palette.ink)
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            // 默认折叠：一行命令，点一下才展开输出。执行中的只在标题旁边说一声。
+            Button { withAnimation(.smoothSpring) { open.toggle() } } label: {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text("$ " + command)
+                        .font(.caption.monospaced())
+                        .foregroundStyle(Palette.ink)
+                        .lineLimit(open ? nil : 1)
+                        .truncationMode(.middle)
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    if state == .running || state == .preparing {
+                        Text("运行中").font(.caption2).foregroundStyle(Palette.secondary)
+                    }
+                    Image(systemName: "chevron.down")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(Palette.secondary)
+                        .rotationEffect(.degrees(open ? 0 : -90))
+                }
                 .padding(12)
                 .background(Palette.field, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-            if state == .running || state == .preparing {
-                Text("运行中").font(.caption).foregroundStyle(Palette.secondary)
-            } else if call.arguments["run_in_background"].bool == true, state == .ok {
-                EmptyView()
-            } else if output.isEmpty {
-                Text("无输出").font(.caption).foregroundStyle(Palette.secondary)
-            } else {
-                WrappedOutput(text: output, tint: state == .error ? Palette.removed : nil)
+                .contentShape(Rectangle())
             }
-            if let badge = status?.badge { Text(badge).font(.caption.weight(.medium)).foregroundStyle(Palette.removed) }
+            .buttonStyle(.plain)
+
+            if open {
+                if let path = row.terminalCwd {
+                    Text(ToolCall.abbreviate(path, cwd: nil)).font(.caption.monospaced()).foregroundStyle(Palette.secondary).lineLimit(1).truncationMode(.head)
+                }
+                if state == .running || state == .preparing {
+                    Text("运行中").font(.caption).foregroundStyle(Palette.secondary)
+                } else if call.arguments["run_in_background"].bool == true, state == .ok {
+                    EmptyView()
+                } else if output.isEmpty {
+                    Text("无输出").font(.caption).foregroundStyle(Palette.secondary)
+                } else {
+                    WrappedOutput(text: output, tint: state == .error ? Palette.removed : nil)
+                }
+                if let badge = status?.badge { Text(badge).font(.caption.weight(.medium)).foregroundStyle(Palette.removed) }
+            }
         }
         .modifier(ToolCardBox())
     }
