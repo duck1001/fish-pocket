@@ -112,6 +112,11 @@ struct SettingsView: View {
                     Text("设备、引擎状态和最近的问题都在这里，可以整份分享出来。")
                 }
                 .groupedRow()
+
+                Section {
+                    linkRow("联系 iOS16 适配作者", "QQ", URL(string: "https://qm.qq.com/q/EbNQg31Zkc")!)
+                }
+                .groupedRow()
             }
             .groupedList()
             .tint(Palette.ink)
