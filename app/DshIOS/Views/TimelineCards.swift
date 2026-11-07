@@ -156,20 +156,27 @@ struct CommandCard: View {
     let command: CommandRun
 
     var body: some View {
-        FoldRow(enabled: (command.text ?? "").contains("\n")) {
-            HStack(spacing: 8) {
-                Image(systemName: "command").frame(width: 18).foregroundStyle(command.failed ? Palette.removed : Palette.secondary)
-                Text(command.name).font(.subheadline.weight(.medium))
-                Text(command.summary).font(.subheadline).foregroundStyle(command.failed ? Palette.removed : Palette.secondary).lineLimit(1)
-                if !command.done { ProgressView().controlSize(.mini) }
+        // 和上面的回复正文之间拉一条细线：不这样的话「已完成，用时 …」会黏在最后一段话后面。
+        VStack(alignment: .leading, spacing: 0) {
+            Rectangle()
+                .fill(Palette.stroke)
+                .frame(height: 0.5)
+                .padding(.bottom, 10)
+            FoldRow(enabled: (command.text ?? "").contains("\n")) {
+                HStack(spacing: 8) {
+                    Image(systemName: "command").frame(width: 18).foregroundStyle(command.failed ? Palette.removed : Palette.secondary)
+                    Text(command.name).font(.subheadline.weight(.medium))
+                    Text(command.summary).font(.subheadline).foregroundStyle(command.failed ? Palette.removed : Palette.secondary).lineLimit(1)
+                    if !command.done { ProgressView().controlSize(.mini) }
+                }
+            } detail: {
+                Text(command.text ?? "")
+                    .font(.caption.monospaced())
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(12)
+                    .background(Palette.field, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
-        } detail: {
-            Text(command.text ?? "")
-                .font(.caption.monospaced())
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(12)
-                .background(Palette.field, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
     }
 }
