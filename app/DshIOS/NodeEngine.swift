@@ -47,6 +47,8 @@ final class NodeEngine: ObservableObject {
             phase = .exited(-1)
             return
         }
+        // 上一次启动因为插件互斥失败的话，先把 profile 补丁停用再起，别让 App 卡死。
+        ProfileRepair.repairIfBricked()
         let urlFile = EnginePaths.real(EnginePaths.shared + "/web-url")
         try? FileManager.default.createDirectory(at: urlFile.deletingLastPathComponent(), withIntermediateDirectories: true)
         try? FileManager.default.removeItem(at: urlFile)
