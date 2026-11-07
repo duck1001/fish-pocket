@@ -1440,7 +1440,7 @@ private struct CustomProviderForm: View {
                 Section { Text(modelProblem).font(.footnote).foregroundStyle(Palette.waiting) }.groupedRow()
             }
             Section {
-                Picker("思考程度", selection: $thinkingLevel) {
+                Picker("思考强度", selection: $thinkingLevel) {
                     // Only what this provider's schema offers: a route with just `high`
                     // must not be given a `max` it cannot honour.
                     ForEach(thinkingOptions, id: \.self) { level in

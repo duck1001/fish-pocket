@@ -268,11 +268,10 @@ struct ComposerView: View {
             if let trigger {
                 CandidatePanel(model: model, context: context, hit: trigger, pick: { pick($0, over: trigger) }, showAll: { refocus = true; browsing = trigger })
             }
-            // 输入框上面一行：左边上下文与 tok/s，右边模型（点开选模型/思考强度）。
+            // 输入框上面只留上下文与 tok/s：模型和思考强度都在 ＋ 托盘里。
             HStack(spacing: 8) {
                 ContextMeter(model: model, composer: composer, rate: model.rate)
                 Spacer(minLength: 0)
-                ModelPicker(model: model, context: context, compact: true)
             }
             .padding(.horizontal, 6)
             field

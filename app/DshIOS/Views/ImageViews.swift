@@ -15,14 +15,33 @@ struct ImageGroup: View {
     var alignment: HorizontalAlignment = .leading
 
     var body: some View {
-        let images = attachments.filter { $0.attachmentId != nil }
-        if images.count == 1, let only = images.first {
-            AttachmentThumb(attachment: only, size: Self.singleSize(only))
-        } else if !images.isEmpty {
-            HStack(spacing: 6) {
-                ForEach(Array(images.enumerated()), id: \.offset) { _, attachment in
-                    AttachmentThumb(attachment: attachment, size: CGSize(width: 64, height: 64))
+        let live = attachments.filter { $0.attachmentId != nil }
+        // 图片和文件分开：.deb / .zip 这类不能走缩略图，否则只会得到「图片加载失败」。
+        let images = live.filter { $0.mediaType?.hasPrefix("image/") == true }
+        let files = live.filter { $0.mediaType?.hasPrefix("image/") != true }
+        VStack(alignment: alignment, spacing: 6) {
+            if images.count == 1, let only = images.first {
+                AttachmentThumb(attachment: only, size: Self.singleSize(only))
+            } else if !images.isEmpty {
+                HStack(spacing: 6) {
+                    ForEach(Array(images.enumerated()), id: \.offset) { _, attachment in
+                        AttachmentThumb(attachment: attachment, size: CGSize(width: 64, height: 64))
+                    }
                 }
+            }
+            ForEach(files, id: \.self) { file in
+                HStack(spacing: 6) {
+                    Image(systemName: "doc").font(.caption)
+                    Text(file.name ?? String(localized: "文件")).lineLimit(1).truncationMode(.middle)
+                    if let bytes = file.bytes, bytes > 0 {
+                        Text(ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file))
+                            .font(.caption2).foregroundStyle(Palette.secondary)
+                    }
+                }
+                .font(.caption)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(Palette.field, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             }
         }
     }

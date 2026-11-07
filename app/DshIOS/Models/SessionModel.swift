@@ -611,7 +611,7 @@ final class SessionModel: ObservableObject {
         if let effort { request["reasoningEffort"] = .string(effort) }
         try await client.call("session/selectModel", ["request": .object(request)])
         modelSelection = (provider, model, effort)
-        refreshProjections()
+        // 切模型/档位不改投影，这里别再刷新一次——那会让整条时间线闪一下。
     }
 
     func runCommand(_ line: String) async {

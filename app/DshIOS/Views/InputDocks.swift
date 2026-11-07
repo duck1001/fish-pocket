@@ -528,7 +528,9 @@ struct ContextMeter: View {
                             .frame(width: 26, height: 3)
                             .overlay(alignment: .leading) {
                                 Capsule()
-                                    .fill(occupancy.percent >= 80 ? Palette.waiting : Palette.secondary)
+                                    .fill(occupancy.percent >= 80 ? Palette.removed
+                                          : occupancy.percent >= 50 ? Palette.running
+                                          : Palette.running.opacity(0.45))
                                     .frame(width: 26 * CGFloat(min(100, occupancy.percent)) / 100, height: 3)
                             }
                         Text("\(Self.compact(occupancy.used)) / \(Self.compact(occupancy.window))")
